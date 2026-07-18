@@ -1,0 +1,46 @@
+# Environment & secrets
+.env
+.venv/
+venv/
+env/
+
+# Generated caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.import_linter_cache/
+
+# Runtime data
+usage.json
+*.log
+
+# Design and planning artifacts
+planning/
+design/
+notes/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+.htmlcov/
+.coverage
+coverage.xml
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
