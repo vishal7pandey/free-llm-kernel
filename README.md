@@ -1,10 +1,14 @@
 # Free LLM Kernel
 
-A minimal, provider-agnostic inference kernel for free LLM APIs with automatic fallback, retry, circuit breaking, and usage tracking.
+**A resilient runtime for free hosted LLMs.**
 
-## Why?
+Route, retry, and fail over across Groq, Gemini, Cerebras, SambaNova, Cloudflare Workers AI, and other free providers so your apps keep working — even when individual providers go down or rate-limit you.
 
-You want to build a GenAI app without paying for OpenAI. There are many free LLM providers (Groq, Google Gemini, Cerebras, SambaNova, Cloudflare, Ollama) — but each has different APIs, quotas, and reliability. This kernel abstracts them all behind one interface with automatic fallback when one provider goes down.
+## Why this project exists
+
+Local inference with Ollama isn't always practical — it needs powerful hardware, eats RAM/VRAM, and runs slower models. Paid APIs (OpenAI, Anthropic) get expensive for hobby projects and experiments. Free cloud-hosted LLMs are powerful but fragmented and unreliable: each has different APIs, quotas, rate limits, and uptime.
+
+Free LLM Kernel unifies them behind a single resilient API with intelligent routing, automatic failover, quota tracking, and circuit breaking — so you can build apps that just work, without worrying about which provider is up right now.
 
 ## Quick Start
 
@@ -232,6 +236,35 @@ response = client.chat("Hello!", model="my-model")
 
 ## Architecture
 
+```
+┌─────────────────────────────────────────────┐
+│                Application                   │
+│            client.chat(prompt)               │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│              Extensions                      │
+│   logging · usage tracking · cache · custom  │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│               Planner                        │
+│  capability filter → routing policy → plan   │
+│  "What can execute?" + "What should?"       │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│               Runtime                        │
+│  HTTP · retry · circuit breaker · streaming  │
+└──────┬─────┬─────┬─────┬─────┬──────────────┘
+       │     │     │     │     │
+    Groq  Gemini  Cerebras  SambaNova  Cloudflare
+       │     │     │     │     │
+└──────┴─────┴─────┴─────┴─────────────────────┘
+                   │
+              Response + Usage
+```
+
 Four-layer design with strict dependency rules:
 
 ```
@@ -283,6 +316,33 @@ See `docs/`:
 | SambaNova | Free tier | Llama 3.3 70B | `SAMBANOVA_API_KEY` |
 | Cloudflare | 10k neurons/day | Llama 3.1 8B | `CLOUDFLARE_API_TOKEN` |
 | Ollama | Local (free) | Llama 3.2 | `OLLAMA_API_KEY` |
+
+## Comparison
+
+| Feature | Free LLM Kernel | LiteLLM | LangChain |
+|---|---|---|---|
+| Provider abstraction | ✓ | ✓ | Partial |
+| Automatic fallback | ✓ | ✓ | Manual |
+| Retry with backoff | ✓ | ✓ | Manual |
+| Circuit breaker | ✓ | Limited | No |
+| Capability-based routing | ✓ | No | No |
+| Pluggable routing policies | ✓ | No | No |
+| Quota tracking | ✓ | No | No |
+| Usage tracking per provider | ✓ | Partial | No |
+| Middleware/extensions | ✓ | Callbacks | Callbacks |
+| Streaming | ✓ | ✓ | ✓ |
+| Focus | Resilience & routing | Provider proxy | Chains & agents |
+
+## Roadmap
+
+- [ ] Quota-aware routing (avoid providers nearing free tier limits)
+- [ ] Latency-based routing with historical data
+- [ ] Model capability discovery (auto-detect supported features)
+- [ ] Response caching to reduce API calls
+- [ ] OpenTelemetry integration for distributed tracing
+- [ ] Plugin system for community providers and policies
+- [ ] Cost-aware routing for mixed free/paid setups
+- [ ] WebSocket-based streaming for lower latency
 
 ## Test Suite
 
