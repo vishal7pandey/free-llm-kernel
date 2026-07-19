@@ -132,6 +132,115 @@ caps = infer_capabilities("llama-3.3-70b")  # {TOOLS, FUNCTION_CALLING, STREAMIN
 meta = infer_model_metadata("qwen-2.5-72b")  # full ModelMetadata with inferred fields
 ```
 
+### Plugin API
+
+Community packages can add providers and routing policies via Python entry points.
+Install a plugin package and it just works:
+
+```bash
+pip install llm-kernel-together
+```
+
+```python
+from llm_kernel import LLMClient
+
+# Load plugins from entry points
+client = LLMClient.from_env(plugins=True)
+
+# Plugin providers and policies are now available
+client.chat("Hello", policy="privacy")  # from llm-kernel-privacy plugin
+```
+
+#### Writing a provider plugin
+
+```python
+from llm_kernel import ProviderPlugin, ProviderMetadata, Secret
+from llm_kernel.runtime import OpenAICompatibleAdapter, AdapterConfig
+
+class TogetherProviderPlugin:
+    @property
+    def name(self) -> str:
+        return "together"
+
+    def create_provider(self) -> ProviderMetadata:
+        return ProviderMetadata(
+            name="together",
+            display_name="Together AI",
+            adapter_type="openai",
+            base_url="https://api.together.xyz/v1",
+            api_key_env="TOGETHER_API_KEY",
+            models=[...],
+            default_model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            daily_request_limit=1000,
+        )
+
+    def create_adapter(self, provider, api_key):
+        return OpenAICompatibleAdapter(
+            config=AdapterConfig(
+                provider_name=provider.name,
+                base_url=provider.base_url,
+                api_key=api_key,
+            ),
+            provider=provider,
+        )
+```
+
+Register via `pyproject.toml`:
+
+```toml
+[project.entry-points."llm_kernel.providers"]
+together = "llm_kernel_together:TogetherProviderPlugin"
+```
+
+#### Writing a policy plugin
+
+```python
+from llm_kernel import PolicyPlugin, RoutingPolicy
+
+class PrivacyPolicy(RoutingPolicy):
+    def score(self, request, provider, model, tokens, health, quota):
+        if provider.privacy_level == "no_training":
+            return 1.0
+        return 0.0
+
+class PrivacyPolicyPlugin:
+    @property
+    def name(self) -> str:
+        return "privacy"
+
+    def create_policy(self) -> RoutingPolicy:
+        return PrivacyPolicy()
+```
+
+Register via `pyproject.toml`:
+
+```toml
+[project.entry-points."llm_kernel.policies"]
+privacy = "llm_kernel_privacy:PrivacyPolicyPlugin"
+```
+
+#### Runtime registration (no entry points needed)
+
+```python
+from llm_kernel import LLMClient, register_provider_plugin, register_policy_plugin
+
+# Register at runtime
+register_provider_plugin(MyProviderPlugin())
+register_policy_plugin(MyPolicyPlugin())
+
+# Or register a policy class directly on the client
+class MyPolicy(RoutingPolicy):
+    def score(self, request, provider, model, tokens, health, quota):
+        return model.quality_score
+
+client.register_policy("my_policy", MyPolicy)
+client.chat("Hello", policy="my_policy")
+
+# List all available policies
+print(client.available_policies())
+# ['best', 'best_free', 'cheapest', 'default', 'fastest', 'my_policy', 'quality']
+```
+
 ## Model Catalogue
 
 ```python
@@ -440,6 +549,7 @@ See `docs/`:
 - [x] Provider Intelligence Engine (`client.provider_health()`)
 - [x] Capability-based routing (`capabilities="vision"`)
 - [x] Automatic model discovery (`client.refresh_models()`)
+- [x] Plugin API for community providers and policies
 
 ### Planned
 
@@ -448,7 +558,7 @@ See `docs/`:
 - [x] v0.5 — Capability-based routing ("give me vision" → kernel picks)
 - [x] v0.6 — Automatic model discovery (auto-detect supported features)
 - [ ] v0.7 — Benchmarks and reliability matrix
-- [ ] v0.8 — Public plugin API for community providers and policies
+- [x] v0.8 — Public plugin API for community providers and policies
 - [ ] v0.9 — API freeze
 - [ ] v1.0 — Stable, maintained
 
@@ -457,7 +567,7 @@ See `docs/`:
 ## Test Suite
 
 ```bash
-uv run pytest          # 305 tests
+uv run pytest          # 322 tests
 uv run lint-imports    # architecture verification
 ```
 

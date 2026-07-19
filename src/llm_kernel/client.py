@@ -24,6 +24,7 @@ from llm_kernel.core import (
 )
 from llm_kernel.extensions import Extension, MiddlewareChain, UsageStore
 from llm_kernel.planner import (
+    POLICY_REGISTRY,
     ModelMetadata,
     Planner,
     ProviderMetadata,
@@ -110,8 +111,15 @@ class LLMClient:
         cls,
         env_path: str | None = None,
         usage_path: str | None = None,
+        *,
+        plugins: bool = False,
     ) -> LLMClient:
-        """Build a client from .env file and default provider registry."""
+        """Build a client from .env file and default provider registry.
+
+        Args:
+            plugins: If True, discover and load community plugins from
+                Python entry points before building the client.
+        """
         from llm_kernel.config import (
             build_adapters,
             build_world_state,
@@ -119,6 +127,15 @@ class LLMClient:
             filter_available_providers,
             resolve_env,
         )
+
+        if plugins:
+            from llm_kernel.plugins import load_plugins
+
+            registry = load_plugins()
+            # Register policy plugins into the global POLICY_REGISTRY
+            for policy_plugin in registry.all_policies():
+                policy = policy_plugin.create_policy()
+                POLICY_REGISTRY[policy_plugin.name] = type(policy)
 
         env = resolve_env(env_path)
         all_providers = default_providers()
@@ -447,6 +464,28 @@ class LLMClient:
             adapters=self._adapters,
             health_tracker=self._health_tracker,
         )
+
+    def register_policy(self, name: str, policy_cls: type[RoutingPolicy]) -> None:
+        """Register a custom routing policy by name.
+
+        After registration, the policy can be used via ``policy=name``
+        in ``chat()`` and ``execute()``.
+
+        Example::
+
+            class MyPolicy(RoutingPolicy):
+                def score(self, request, provider, model, tokens, health, quota):
+                    return model.quality_score
+
+            client.register_policy("my_policy", MyPolicy)
+            client.chat("Hello", policy="my_policy")
+        """
+        POLICY_REGISTRY[name] = policy_cls
+
+    @staticmethod
+    def available_policies() -> list[str]:
+        """Return all registered policy names (built-in + plugins)."""
+        return sorted(POLICY_REGISTRY.keys())
 
     def refresh_models(self) -> dict[str, list[str]]:
         """Query each provider's /models endpoint and update the model catalogue.

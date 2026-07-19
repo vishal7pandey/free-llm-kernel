@@ -32,9 +32,19 @@ from llm_kernel.planner import (
     PlanningError,
     ProviderMetadata,
     RetryPolicy,
+    RoutingPolicy,
     TimeoutPolicy,
     infer_capabilities,
     infer_model_metadata,
+)
+from llm_kernel.plugins import (
+    PluginRegistry,
+    PolicyPlugin,
+    ProviderPlugin,
+    get_registry,
+    load_plugins,
+    register_policy_plugin,
+    register_provider_plugin,
 )
 
 __all__ = [
@@ -59,9 +69,17 @@ __all__ = [
     "Candidate",
     "FallbackPolicy",
     "RetryPolicy",
+    "RoutingPolicy",
     "TimeoutPolicy",
     "infer_capabilities",
     "infer_model_metadata",
+    "PolicyPlugin",
+    "PluginRegistry",
+    "ProviderPlugin",
+    "get_registry",
+    "load_plugins",
+    "register_policy_plugin",
+    "register_provider_plugin",
     "Request",
     "Response",
     "ResponseFormat",

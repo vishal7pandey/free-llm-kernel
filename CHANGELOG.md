@@ -63,7 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `infer_capabilities()`, `infer_context_tokens()`, `infer_quality_score()`,
   and `infer_model_metadata()` in planner for heuristic model metadata inference
 - `discover_models()` method on `OpenAICompatibleAdapter`
+- Public plugin API: `ProviderPlugin` and `PolicyPlugin` protocols,
+  `PluginRegistry`, entry point discovery (`llm_kernel.providers`,
+  `llm_kernel.policies` groups), `load_plugins()`, `register_policy()`
+  and `available_policies()` on `LLMClient`, `from_env(plugins=True)`
 - `.github/dependabot.yml` for automated dependency updates
 - `SECURITY.md` with vulnerability reporting policy
-- 75 new tests for health tracking, quota-aware routing, per-request policy,
-  capability-based routing, and model discovery (305 total)
+- 92 new tests for health tracking, quota-aware routing, per-request policy,
+  capability-based routing, model discovery, and plugin system (322 total)
