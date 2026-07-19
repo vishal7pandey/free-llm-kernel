@@ -9,7 +9,8 @@ You want to build a GenAI app without paying for OpenAI. There are many free LLM
 ## Quick Start
 
 ```bash
-cd C:\Dev\personal\free-llm-kernel
+git clone https://github.com/vishal7pandey/free-llm-kernel.git
+cd free-llm-kernel
 uv venv
 uv pip install -e ".[dev]"
 cp .env.example .env  # fill in at least one API key
