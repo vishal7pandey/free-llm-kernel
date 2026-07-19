@@ -7,6 +7,7 @@ lower layers (runtime, planner, core).
 from __future__ import annotations
 
 import json
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -138,12 +139,13 @@ class UsageStore:
     """Persistent per-day, per-provider usage tracker.
 
     Stores a JSON file mapping ``{date: {provider:model: UsageRecord}}``.
-    Thread-unsafe by design — the kernel is async-single-threaded.
+    Thread-safe via an internal lock.
     """
 
     def __init__(self, path: Path | str | None = None):
         self._path = Path(path) if path else None
         self._data: dict[str, dict[str, UsageRecord]] = {}
+        self._lock = threading.Lock()
         self._load()
 
     def record(
@@ -153,32 +155,33 @@ class UsageStore:
         usage: Usage,
     ) -> None:
         """Record a successful request's token usage."""
-        day = self._today()
-        key = f"{provider}:{model}"
+        with self._lock:
+            day = self._today()
+            key = f"{provider}:{model}"
 
-        day_data = self._data.setdefault(day, {})
-        existing = day_data.get(key)
+            day_data = self._data.setdefault(day, {})
+            existing = day_data.get(key)
 
-        if existing is not None:
-            day_data[key] = UsageRecord(
-                provider=provider,
-                model=model,
-                day=day,
-                request_count=existing.request_count + 1,
-                prompt_tokens=existing.prompt_tokens + usage.prompt_tokens,
-                completion_tokens=existing.completion_tokens + usage.completion_tokens,
-            )
-        else:
-            day_data[key] = UsageRecord(
-                provider=provider,
-                model=model,
-                day=day,
-                request_count=1,
-                prompt_tokens=usage.prompt_tokens,
-                completion_tokens=usage.completion_tokens,
-            )
+            if existing is not None:
+                day_data[key] = UsageRecord(
+                    provider=provider,
+                    model=model,
+                    day=day,
+                    request_count=existing.request_count + 1,
+                    prompt_tokens=existing.prompt_tokens + usage.prompt_tokens,
+                    completion_tokens=existing.completion_tokens + usage.completion_tokens,
+                )
+            else:
+                day_data[key] = UsageRecord(
+                    provider=provider,
+                    model=model,
+                    day=day,
+                    request_count=1,
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                )
 
-        self._save()
+            self._save()
 
     def get_today(self) -> list[UsageRecord]:
         """Return all usage records for today."""
