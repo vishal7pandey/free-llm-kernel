@@ -58,6 +58,38 @@ for chunk in client.stream("Count from 1 to 10."):
 response = client.chat("Hello!", model="gemini-2.0-flash")
 ```
 
+### Capability-based routing
+
+The kernel knows which providers support which capabilities. Instead of
+specifying a model, specify what you need:
+
+```python
+# "I need vision" → kernel routes to Gemini (only provider with VISION)
+response = client.chat("Describe this image", capabilities="vision")
+
+# "I need JSON output" → kernel routes to Gemini, Cerebras, or SambaNova
+response = client.chat("Return a JSON object", capabilities="json")
+
+# Multiple capabilities → kernel intersects
+response = client.chat("Analyze image, return JSON", capabilities=["vision", "json"])
+
+# Combine with policy selection
+response = client.chat("Parse this", capabilities="json", policy="best_free")
+```
+
+Friendly aliases:
+
+| Alias | Capability |
+|---|---|
+| `vision`, `image`, `multimodal` | `VISION` |
+| `json`, `json_mode`, `json_object` | `JSON_MODE` |
+| `json_schema`, `structured` | `JSON_SCHEMA` |
+| `tools`, `tool`, `tool_calling` | `TOOLS` |
+| `functions`, `function_calling` | `FUNCTION_CALLING` |
+| `long_context`, `long`, `large_context` | `LONG_CONTEXT` |
+| `reasoning`, `think`, `thinking` | `REASONING` |
+| `streaming`, `stream` | `STREAMING` |
+
 ### Advanced: full Request pipeline
 
 ```python
@@ -380,12 +412,13 @@ See `docs/`:
 - [x] Health scoring with circuit breaker integration
 - [x] Per-request policy selection (`policy="best_free"`)
 - [x] Provider Intelligence Engine (`client.provider_health()`)
+- [x] Capability-based routing (`capabilities="vision"`)
 
 ### Planned
 
 - [ ] v0.3 — Feature complete, stop adding providers
 - [ ] v0.4 — Health scoring refinements (availability %, 429 rate tracking)
-- [ ] v0.5 — Capability-based routing ("give me vision" → kernel picks)
+- [x] v0.5 — Capability-based routing ("give me vision" → kernel picks)
 - [ ] v0.6 — Automatic model discovery (auto-detect supported features)
 - [ ] v0.7 — Benchmarks and reliability matrix
 - [ ] v0.8 — Public plugin API for community providers and policies
@@ -397,7 +430,7 @@ See `docs/`:
 ## Test Suite
 
 ```bash
-uv run pytest          # 258 tests
+uv run pytest          # 275 tests
 uv run lint-imports    # architecture verification
 ```
 

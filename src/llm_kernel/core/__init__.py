@@ -55,6 +55,71 @@ class Capability(StrEnum):
     REASONING = "reasoning"
 
 
+CAPABILITY_ALIASES: dict[str, Capability] = {
+    "streaming": Capability.STREAMING,
+    "stream": Capability.STREAMING,
+    "tools": Capability.TOOLS,
+    "tool": Capability.TOOLS,
+    "tool_calling": Capability.TOOLS,
+    "function_calling": Capability.FUNCTION_CALLING,
+    "functions": Capability.FUNCTION_CALLING,
+    "vision": Capability.VISION,
+    "image": Capability.VISION,
+    "multimodal": Capability.VISION,
+    "json": Capability.JSON_MODE,
+    "json_mode": Capability.JSON_MODE,
+    "json_object": Capability.JSON_MODE,
+    "json_schema": Capability.JSON_SCHEMA,
+    "structured": Capability.JSON_SCHEMA,
+    "long_context": Capability.LONG_CONTEXT,
+    "long": Capability.LONG_CONTEXT,
+    "large_context": Capability.LONG_CONTEXT,
+    "reasoning": Capability.REASONING,
+    "think": Capability.REASONING,
+    "thinking": Capability.REASONING,
+}
+
+
+def resolve_capabilities(
+    capabilities: str | Capability | list[str | Capability] | None,
+) -> frozenset[Capability]:
+    """Resolve user-friendly capability strings into a frozenset of Capability.
+
+    Accepts single strings, Capability enums, or lists of either.
+    Friendly aliases like "json", "vision", "tools" are supported.
+
+    Examples::
+
+        resolve_capabilities("vision")                    # {Capability.VISION}
+        resolve_capabilities(["json", "tools"])           # {Capability.JSON_MODE, Capability.TOOLS}
+        resolve_capabilities(Capability.STREAMING)        # {Capability.STREAMING}
+        resolve_capabilities(None)                        # frozenset()
+    """
+    if capabilities is None:
+        return frozenset()
+    if isinstance(capabilities, Capability):
+        return frozenset({capabilities})
+    caps = [capabilities] if isinstance(capabilities, str) else list(capabilities)
+
+    resolved: set[Capability] = set()
+    for cap in caps:
+        if isinstance(cap, Capability):
+            resolved.add(cap)
+        elif isinstance(cap, str):
+            key = cap.lower().strip()
+            mapped = CAPABILITY_ALIASES.get(key)
+            if mapped is None:
+                try:
+                    mapped = Capability(key)
+                except ValueError as exc:
+                    valid = sorted(CAPABILITY_ALIASES.keys())
+                    raise ValidationError(
+                        f"Unknown capability '{cap}'. Valid options: {valid}"
+                    ) from exc
+            resolved.add(mapped)
+    return frozenset(resolved)
+
+
 class FinishReason(StrEnum):
     COMPLETED = "completed"
     LENGTH = "length"
@@ -477,6 +542,8 @@ __all__ = [
     "TERMINAL_STATES",
     "Role",
     "Capability",
+    "CAPABILITY_ALIASES",
+    "resolve_capabilities",
     "FinishReason",
     "ResponseFormatType",
     "ErrorCategory",

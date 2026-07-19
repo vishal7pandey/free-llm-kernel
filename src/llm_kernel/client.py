@@ -20,6 +20,7 @@ from llm_kernel.core import (
     Response,
     Role,
     Secret,
+    resolve_capabilities,
 )
 from llm_kernel.extensions import Extension, MiddlewareChain, UsageStore
 from llm_kernel.planner import ModelMetadata, Planner, ProviderMetadata, RoutingPolicy, WorldState
@@ -159,6 +160,7 @@ class LLMClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
         policy: str | RoutingPolicy | None = None,
+        capabilities: str | Capability | list[str | Capability] | None = None,
     ) -> Response:
         """Send a chat request and return a Response.
 
@@ -168,6 +170,15 @@ class LLMClient:
             policy: Optional routing policy override for this request.
                 Can be a string ("best_free", "fastest", "cheapest", "quality",
                 "default") or a RoutingPolicy instance.
+            capabilities: Optional capability requirements for this request.
+                Accepts friendly strings like "vision", "json", "tools",
+                "long_context" or lists thereof. Only providers that support
+                these capabilities will be considered.
+
+        Example::
+
+            client.chat("Describe this image", capabilities="vision")
+            client.chat("Parse this data", capabilities=["json", "tools"])
         """
         messages: list[Message] = []
         if system:
@@ -179,6 +190,7 @@ class LLMClient:
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            capabilities_required=resolve_capabilities(capabilities),
         )
 
         return self.execute(request, policy=policy)

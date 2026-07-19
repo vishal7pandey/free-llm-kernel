@@ -150,14 +150,18 @@ def default_providers() -> list[ProviderMetadata]:
                     display_name="Llama 3.3 70B (Cerebras)",
                     max_context_tokens=131_072,
                     max_output_tokens=8_192,
-                    capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
+                    capabilities=frozenset(
+                        {Capability.STREAMING, Capability.TOOLS, Capability.JSON_MODE}
+                    ),
                     quality_score=0.8,
                     latency_score=0.97,
                 ),
             ],
             default_model="llama-3.3-70b",
             priority=0,
-            capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
+            capabilities=frozenset(
+                {Capability.STREAMING, Capability.TOOLS, Capability.JSON_MODE}
+            ),
             privacy_level=PrivacyLevel.UNKNOWN,
             daily_request_limit=1000,
         ),
@@ -173,14 +177,18 @@ def default_providers() -> list[ProviderMetadata]:
                     display_name="Llama 3.3 70B (SambaNova)",
                     max_context_tokens=131_072,
                     max_output_tokens=4_096,
-                    capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
+                    capabilities=frozenset(
+                        {Capability.STREAMING, Capability.TOOLS, Capability.JSON_MODE}
+                    ),
                     quality_score=0.8,
                     latency_score=0.85,
                 ),
             ],
             default_model="Meta-Llama-3.3-70B-Instruct",
             priority=1,
-            capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
+            capabilities=frozenset(
+                {Capability.STREAMING, Capability.TOOLS, Capability.JSON_MODE}
+            ),
             privacy_level=PrivacyLevel.UNKNOWN,
             daily_request_limit=None,
         ),

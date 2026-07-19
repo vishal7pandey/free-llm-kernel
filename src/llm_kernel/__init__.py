@@ -2,6 +2,7 @@
 
 from llm_kernel.client import LLMClient, ModelInfo
 from llm_kernel.core import (
+    CAPABILITY_ALIASES,
     Capability,
     ErrorCategory,
     ExecutionError,
@@ -19,6 +20,7 @@ from llm_kernel.core import (
     ToolCall,
     Usage,
     ValidationError,
+    resolve_capabilities,
 )
 from llm_kernel.extensions import Extension, MiddlewareChain
 from llm_kernel.planner import (
@@ -40,6 +42,7 @@ __all__ = [
     "MiddlewareChain",
     "BestFreePolicy",
     "Capability",
+    "CAPABILITY_ALIASES",
     "ErrorCategory",
     "ExecutionError",
     "ExecutionPlan",
@@ -64,4 +67,5 @@ __all__ = [
     "ToolCall",
     "Usage",
     "ValidationError",
+    "resolve_capabilities",
 ]

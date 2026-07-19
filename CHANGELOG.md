@@ -51,7 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `POLICY_REGISTRY` and `resolve_policy()` in planner for policy name resolution
 - `scripts/benchmark.py` — reliability benchmark measuring per-provider latency,
   success rate, and failover behavior across routing policies
+- Capability-based routing: `client.chat(prompt, capabilities="vision")` —
+  users specify what they need (vision, json, tools, long_context) and the
+  kernel routes to providers that support those capabilities
+- `CAPABILITY_ALIASES` and `resolve_capabilities()` in core for friendly
+  string-to-Capability resolution (e.g. "json" → JSON_MODE, "image" → VISION)
+- `JSON_MODE` capability added to Cerebras and SambaNova models
 - `.github/dependabot.yml` for automated dependency updates
 - `SECURITY.md` with vulnerability reporting policy
-- 28 new tests for health tracking, quota-aware routing, and per-request policy
-  (258 total)
+- 45 new tests for health tracking, quota-aware routing, per-request policy,
+  and capability-based routing (275 total)
