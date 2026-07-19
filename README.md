@@ -611,7 +611,7 @@ print(llm_kernel.__version__)  # "1.0.0"
 ## Test Suite
 
 ```bash
-uv run pytest          # 331 tests
+uv run pytest          # 354 tests
 uv run lint-imports    # architecture verification
 ```
 

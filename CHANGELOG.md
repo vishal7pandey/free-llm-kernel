@@ -16,7 +16,7 @@ and backed by an automated stability test. The kernel provides intelligent
 routing, automatic failover, quota tracking, circuit breaking, capability-based
 routing, automatic model discovery, and a plugin API for community extensions.
 
-**331 tests** · **6 modules** · **44 public exports** · **7 providers**
+**354 tests** · **6 modules** · **44 public exports** · **7 providers**
 
 ### Added in this release cycle
 
@@ -34,6 +34,8 @@ routing, automatic model discovery, and a plugin API for community extensions.
 - `SECURITY.md` with vulnerability reporting policy
 - `.github/dependabot.yml` for automated dependency updates
 - `scripts/benchmark.py` reliability benchmark
+- Property-based tests (Hypothesis) for state machine, capability resolution,
+  token estimation, planner determinism, and model discovery inference
 
 ### Providers
 
