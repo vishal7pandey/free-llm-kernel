@@ -137,23 +137,60 @@ client.add_extension(MyExtension())
 The Planner filters providers by capability and context window ("what can execute?").
 The RoutingPolicy scores and orders the survivors ("what should execute?").
 
+Policies can be set at construction time or overridden per-request:
+
 ```python
-from llm_kernel.planner import Planner, WorldState, FastestPolicy, CheapestPolicy, QualityPolicy, BestFreePolicy
-from llm_kernel.config import default_providers, build_world_state
+from llm_kernel import LLMClient
 
-providers = default_providers()
-world_state = build_world_state(providers)
+client = LLMClient.from_env()
 
-# Use best free policy (health + quota + latency aware)
+# Per-request policy selection (the killer feature)
+response = client.chat("Hello!", policy="best_free")    # health + quota + latency
+response = client.chat("Hello!", policy="fastest")      # prioritize latency
+response = client.chat("Hello!", policy="quality")      # prioritize model quality
+response = client.chat("Hello!", policy="cheapest")     # prioritize lowest cost
+
+# Or set a default policy at construction time
+from llm_kernel.planner import BestFreePolicy
 planner = Planner(world_state, policy=BestFreePolicy())
+```
 
-# Or fastest, cheapest, or quality
-planner = Planner(world_state, policy=FastestPolicy())
-planner = Planner(world_state, policy=CheapestPolicy())
-planner = Planner(world_state, policy=QualityPolicy())
+Available policies:
 
-# Custom policy
-from llm_kernel.planner import RoutingPolicy, HealthSnapshot, QuotaSnapshot
+| Policy | Description |
+|---|---|
+| `best_free` / `best` | Combines health status, quota remaining, latency history, and model quality |
+| `fastest` | Prioritizes low latency above all else |
+| `cheapest` | Prioritizes lowest cost above all else |
+| `quality` | Prioritizes model quality above all else |
+| `default` | Balanced scoring (quality + latency + capability + quota penalty) |
+
+### Provider Intelligence Engine
+
+The kernel tracks live health, latency, and quota for every provider.
+Introspect what it knows before sending a request:
+
+```python
+health = client.provider_health()
+# {
+#     "groq": {
+#         "status": "healthy",
+#         "latency_ms": 150.0,
+#         "requests_today": 42,
+#         "quota_remaining": 0.958,
+#         "daily_limit": 1000,
+#     },
+#     "google": {
+#         "status": "degraded",
+#         "latency_ms": 800.0,
+#         "requests_today": 1200,
+#         "quota_remaining": 0.2,
+#         "daily_limit": 1500,
+#     },
+# }
+```
+
+### Custom Policies
 
 class PrivacyFirstPolicy(RoutingPolicy):
     def score(self, request, provider, model, tokens, health, quota):
@@ -336,18 +373,30 @@ See `docs/`:
 
 ## Roadmap
 
-- [ ] Quota-aware routing (avoid providers nearing free tier limits)
-- [ ] Latency-based routing with historical data
-- [ ] Model capability discovery (auto-detect supported features)
-- [ ] Response caching to reduce API calls
-- [ ] OpenTelemetry integration for distributed tracing
-- [ ] Plugin system for community providers and policies
-- [ ] Cost-aware routing for mixed free/paid setups
-- [ ] WebSocket-based streaming for lower latency
+### Done
+
+- [x] Quota-aware routing (avoid providers nearing free tier limits)
+- [x] Latency-based routing with historical data
+- [x] Health scoring with circuit breaker integration
+- [x] Per-request policy selection (`policy="best_free"`)
+- [x] Provider Intelligence Engine (`client.provider_health()`)
+
+### Planned
+
+- [ ] v0.3 — Feature complete, stop adding providers
+- [ ] v0.4 — Health scoring refinements (availability %, 429 rate tracking)
+- [ ] v0.5 — Capability-based routing ("give me vision" → kernel picks)
+- [ ] v0.6 — Automatic model discovery (auto-detect supported features)
+- [ ] v0.7 — Benchmarks and reliability matrix
+- [ ] v0.8 — Public plugin API for community providers and policies
+- [ ] v0.9 — API freeze
+- [ ] v1.0 — Stable, maintained
+
+**Not building:** agents, memory, RAG, vector databases, prompt templates, chains, workflow engines. Those already exist. This project stays focused on execution, resilience, and intelligent routing for free hosted LLMs.
 
 ## Test Suite
 
 ```bash
-uv run pytest          # 230 tests
+uv run pytest          # 258 tests
 uv run lint-imports    # architecture verification
 ```

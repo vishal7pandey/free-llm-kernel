@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `daily_request_limit` field on `ProviderMetadata` for free tier quota awareness
 - `LLMClient` now wires `HealthTracker` into `Executor` and refreshes `WorldState`
   with live health/quota data before each request
+- Per-request policy selection: `client.chat(prompt, policy="best_free")` —
+  policies are now first-class, overridable per request via string name or
+  `RoutingPolicy` instance
+- `provider_health()` method on `LLMClient`: Provider Intelligence Engine
+  surface for introspecting live health, latency, and quota per provider
+- `POLICY_REGISTRY` and `resolve_policy()` in planner for policy name resolution
 - `.github/dependabot.yml` for automated dependency updates
 - `SECURITY.md` with vulnerability reporting policy
-- 17 new tests for health tracking and quota-aware routing (247 total)
+- 28 new tests for health tracking, quota-aware routing, and per-request policy
+  (258 total)

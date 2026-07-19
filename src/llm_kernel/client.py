@@ -22,7 +22,7 @@ from llm_kernel.core import (
     Secret,
 )
 from llm_kernel.extensions import Extension, MiddlewareChain, UsageStore
-from llm_kernel.planner import ModelMetadata, Planner, ProviderMetadata, WorldState
+from llm_kernel.planner import ModelMetadata, Planner, ProviderMetadata, RoutingPolicy, WorldState
 from llm_kernel.runtime import (
     AdapterConfig,
     Executor,
@@ -158,10 +158,16 @@ class LLMClient:
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        policy: str | RoutingPolicy | None = None,
     ) -> Response:
         """Send a chat request and return a Response.
 
         Automatically plans, executes with fallback, and records usage.
+
+        Args:
+            policy: Optional routing policy override for this request.
+                Can be a string ("best_free", "fastest", "cheapest", "quality",
+                "default") or a RoutingPolicy instance.
         """
         messages: list[Message] = []
         if system:
@@ -175,17 +181,24 @@ class LLMClient:
             max_tokens=max_tokens,
         )
 
-        return self.execute(request)
+        return self.execute(request, policy=policy)
 
-    def execute(self, request: Request) -> Response:
+    def execute(
+        self, request: Request, *, policy: str | RoutingPolicy | None = None,
+    ) -> Response:
         """Execute a full Request through the pipeline: middleware → plan → execute → record.
 
         This is the advanced API (INTERFACE.md §8.1). Use chat() for simple cases.
+
+        Args:
+            policy: Optional routing policy override for this request.
+                Can be a string ("best_free", "fastest", "cheapest", "quality",
+                "default") or a RoutingPolicy instance.
         """
         self._refresh_world_state()
         request = self._middleware.on_request(request)
 
-        plan = self._planner.plan(request)
+        plan = self._planner.plan(request, policy=policy)
         self._middleware.on_plan(plan)
 
         self._middleware.on_execution_start(plan)
@@ -286,6 +299,46 @@ class LLMClient:
         if self._usage_store is None:
             return {}
         return {r.provider: r for r in self._usage_store.get_today()}
+
+    def provider_health(self) -> dict[str, dict[str, Any]]:
+        """Return live health and quota status per provider.
+
+        This is the Provider Intelligence Engine surface — introspect what
+        the kernel knows about each provider before sending a request.
+
+        Example::
+
+            {
+                "groq": {
+                    "status": "healthy",
+                    "latency_ms": 150.0,
+                    "requests_today": 42,
+                    "quota_remaining": 0.958,
+                    "daily_limit": 1000,
+                },
+                "google": {
+                    "status": "degraded",
+                    "latency_ms": 800.0,
+                    "requests_today": 1200,
+                    "quota_remaining": 0.2,
+                    "daily_limit": 1500,
+                },
+            }
+        """
+        health = self._health_tracker.get_health()
+        quota = self._health_tracker.get_quota()
+        result: dict[str, dict[str, Any]] = {}
+        for provider in self._providers:
+            name = provider.name
+            usage = quota.get_usage(name)
+            result[name] = {
+                "status": health.status.get(name, "healthy"),
+                "latency_ms": quota.get_latency(name),
+                "requests_today": usage.request_count if usage else 0,
+                "quota_remaining": self._health_tracker.quota_remaining(name),
+                "daily_limit": provider.daily_request_limit,
+            }
+        return result
 
     # -----------------------------------------------------------------------
     # Model Catalogue

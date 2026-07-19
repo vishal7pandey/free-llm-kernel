@@ -27,6 +27,7 @@ from llm_kernel.core import (
     Secret,
     ToolCall,
     Usage,
+    UsageRecord,
     ValidationError,
 )
 from llm_kernel.planner import (
@@ -122,16 +123,16 @@ class HealthTracker:
         return HealthSnapshot(dict(self._health))
 
     def get_quota(self) -> QuotaSnapshot:
-        usage: dict[str, Any] = {}
+        usage: dict[str, UsageRecord] = {}
         for provider, count in self._request_counts.items():
-            usage[provider] = {
-                "provider": provider,
-                "model": "",
-                "day": datetime.now(UTC).strftime("%Y-%m-%d"),
-                "request_count": count,
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-            }
+            usage[provider] = UsageRecord(
+                provider=provider,
+                model="",
+                day=datetime.now(UTC).strftime("%Y-%m-%d"),
+                request_count=count,
+                prompt_tokens=0,
+                completion_tokens=0,
+            )
         latency: dict[str, float] = {}
         for provider, samples in self._latency_samples.items():
             if samples:

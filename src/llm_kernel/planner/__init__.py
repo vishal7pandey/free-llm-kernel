@@ -309,6 +309,31 @@ class BestFreePolicy:
         )
 
 
+POLICY_REGISTRY: dict[str, type[RoutingPolicy]] = {
+    "default": DefaultRoutingPolicy,
+    "best_free": BestFreePolicy,
+    "best": BestFreePolicy,
+    "fastest": FastestPolicy,
+    "cheapest": CheapestPolicy,
+    "quality": QualityPolicy,
+}
+
+
+def resolve_policy(policy: str | RoutingPolicy | None) -> RoutingPolicy:
+    """Resolve a policy name or instance into a RoutingPolicy instance."""
+    if policy is None:
+        return DefaultRoutingPolicy()
+    if isinstance(policy, str):
+        cls = POLICY_REGISTRY.get(policy)
+        if cls is None:
+            raise PlanningError(
+                f"Unknown policy '{policy}'. "
+                f"Available: {sorted(POLICY_REGISTRY.keys())}"
+            )
+        return cls()
+    return policy
+
+
 # ---------------------------------------------------------------------------
 # Token Estimation
 # ---------------------------------------------------------------------------
@@ -376,12 +401,18 @@ class Planner:
         self._token_estimator = token_estimator or DefaultTokenEstimator()
         self._policy = policy or DefaultRoutingPolicy()
 
-    def plan(self, request: Request, world_state: WorldState | None = None) -> ExecutionPlan:
+    def plan(
+        self,
+        request: Request,
+        world_state: WorldState | None = None,
+        policy: str | RoutingPolicy | None = None,
+    ) -> ExecutionPlan:
         """Generate an ExecutionPlan for the given Request.
 
         Args:
             request: The normalized request.
             world_state: Optional override of the planner's default world state.
+            policy: Optional per-request routing policy override (name or instance).
 
         Returns:
             ExecutionPlan with ordered candidates.
@@ -390,6 +421,7 @@ class Planner:
             PlanningError: If no provider can satisfy the request.
         """
         state = world_state or self._world_state
+        scoring_policy = resolve_policy(policy) if policy is not None else self._policy
         estimated_tokens = self._token_estimator.estimate_messages(request.messages)
 
         health = state.health_snapshot
@@ -405,6 +437,7 @@ class Planner:
                     estimated_tokens,
                     health,
                     quota,
+                    scoring_policy,
                 )
                 if candidate is not None:
                     candidates.append(candidate)
@@ -436,6 +469,7 @@ class Planner:
         estimated_tokens: int,
         health: HealthSnapshot,
         quota: QuotaSnapshot,
+        scoring_policy: RoutingPolicy,
     ) -> Candidate | None:
         """Evaluate a (provider, model) pair. Return None if it cannot satisfy the request."""
         available_capabilities = provider.capabilities | model.capabilities
@@ -448,7 +482,7 @@ class Planner:
         if not health.is_available(provider.name):
             return None
 
-        score = self._policy.score(request, provider, model, estimated_tokens, health, quota)
+        score = scoring_policy.score(request, provider, model, estimated_tokens, health, quota)
 
         return Candidate(
             provider=provider.name,
@@ -486,6 +520,8 @@ __all__ = [
     "FastestPolicy",
     "CheapestPolicy",
     "QualityPolicy",
+    "POLICY_REGISTRY",
+    "resolve_policy",
     "Planner",
     "PlanningError",
     "Candidate",

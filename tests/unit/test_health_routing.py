@@ -4,15 +4,18 @@ from llm_kernel.core import (
     Message,
     Request,
     Role,
+    UsageRecord,
 )
 from llm_kernel.planner import (
     BestFreePolicy,
     HealthSnapshot,
     ModelMetadata,
     Planner,
+    PlanningError,
     ProviderMetadata,
     QuotaSnapshot,
     WorldState,
+    resolve_policy,
 )
 from llm_kernel.runtime import HealthTracker
 
@@ -158,16 +161,6 @@ class TestBestFreePolicy:
 
         quota_full = QuotaSnapshot()
         quota_used = QuotaSnapshot(
-            usage={"groq": type(
-                "R",
-                (),
-                {"provider": "groq", "request_count": 90},
-            )()},
-        )
-
-        from llm_kernel.core import UsageRecord
-
-        quota_used = QuotaSnapshot(
             usage={"groq": UsageRecord(
                 provider="groq", model="groq-model", day="2026-01-01",
                 request_count=90,
@@ -215,8 +208,6 @@ class TestPlannerWithHealthAndQuota:
         groq = _make_provider("groq", daily_limit=100, quality=0.8)
         google = _make_provider("google", daily_limit=1000, quality=0.75)
 
-        from llm_kernel.core import UsageRecord
-
         ws = WorldState(
             providers=[groq, google],
             usage={
@@ -252,3 +243,144 @@ class TestPlannerWithHealthAndQuota:
 
         assert plan.candidates[0].provider == "google"
         assert not tracker.is_available("groq")
+
+
+class TestPerRequestPolicy:
+    def test_plan_accepts_policy_string_override(self):
+        groq = _make_provider("groq", quality=0.9, latency=0.95)
+        google = _make_provider("google", quality=0.7, latency=0.8)
+
+        ws = WorldState(providers=[groq, google])
+        planner = Planner(ws)  # default policy
+        request = Request(messages=[Message(role=Role.USER, content="hi")])
+
+        # With "quality" policy, groq (0.9) should beat google (0.7)
+        plan_quality = planner.plan(request, policy="quality")
+        assert plan_quality.candidates[0].provider == "groq"
+
+        # With "fastest" policy, groq (0.95) should still beat google (0.8)
+        plan_fastest = planner.plan(request, policy="fastest")
+        assert plan_fastest.candidates[0].provider == "groq"
+
+    def test_plan_accepts_policy_instance_override(self):
+        groq = _make_provider("groq", quality=0.9, latency=0.95)
+        google = _make_provider("google", quality=0.7, latency=0.8)
+
+        ws = WorldState(providers=[groq, google])
+        planner = Planner(ws, policy=BestFreePolicy())
+        request = Request(messages=[Message(role=Role.USER, content="hi")])
+
+        # Override with a different policy instance
+        from llm_kernel.planner import FastestPolicy
+        plan = planner.plan(request, policy=FastestPolicy())
+        # FastestPolicy scores by latency_score: groq (0.95) > google (0.8)
+        assert plan.candidates[0].provider == "groq"
+
+    def test_unknown_policy_name_raises(self):
+        groq = _make_provider("groq")
+        ws = WorldState(providers=[groq])
+        planner = Planner(ws)
+        request = Request(messages=[Message(role=Role.USER, content="hi")])
+
+        try:
+            planner.plan(request, policy="nonexistent")
+            raise AssertionError("Should have raised PlanningError")
+        except PlanningError:
+            pass
+
+    def test_default_policy_used_when_none(self):
+        groq = _make_provider("groq")
+        ws = WorldState(providers=[groq])
+        planner = Planner(ws, policy=BestFreePolicy())
+        request = Request(messages=[Message(role=Role.USER, content="hi")])
+
+        # No override → uses planner's default (BestFreePolicy)
+        plan = planner.plan(request)
+        assert len(plan.candidates) == 1
+        assert plan.candidates[0].provider == "groq"
+
+
+class TestResolvePolicy:
+    def test_resolve_by_name(self):
+        policy = resolve_policy("best_free")
+        assert isinstance(policy, BestFreePolicy)
+
+    def test_resolve_none_returns_default(self):
+        from llm_kernel.planner import DefaultRoutingPolicy
+        policy = resolve_policy(None)
+        assert isinstance(policy, DefaultRoutingPolicy)
+
+    def test_resolve_instance_passthrough(self):
+        custom = BestFreePolicy()
+        assert resolve_policy(custom) is custom
+
+    def test_resolve_unknown_raises(self):
+        try:
+            resolve_policy("nonsense")
+            raise AssertionError("Should have raised")
+        except PlanningError:
+            pass
+
+
+class TestProviderHealth:
+    def test_provider_health_returns_all_providers(self):
+        from llm_kernel.client import LLMClient
+
+        groq = _make_provider("groq", daily_limit=100)
+        google = _make_provider("google", daily_limit=200)
+
+        ws = WorldState(providers=[groq, google])
+        client = LLMClient(
+            providers=[groq, google],
+            world_state=ws,
+            adapters={},
+        )
+
+        health = client.provider_health()
+        assert "groq" in health
+        assert "google" in health
+        assert health["groq"]["status"] == "healthy"
+        assert health["groq"]["daily_limit"] == 100
+        assert health["google"]["daily_limit"] == 200
+
+    def test_provider_health_reflects_failures(self):
+        from llm_kernel.client import LLMClient
+
+        groq = _make_provider("groq", daily_limit=100)
+
+        ws = WorldState(providers=[groq])
+        client = LLMClient(
+            providers=[groq],
+            world_state=ws,
+            adapters={},
+        )
+
+        # Simulate failures
+        for _ in range(3):
+            client._health_tracker.record_failure("groq", "server")
+
+        health = client.provider_health()
+        assert health["groq"]["status"] == "unhealthy"
+        assert health["groq"]["quota_remaining"] == 1.0  # no successes recorded
+
+    def test_provider_health_reflects_quota_usage(self):
+        from llm_kernel.client import LLMClient
+
+        groq = _make_provider("groq", daily_limit=100)
+
+        ws = WorldState(providers=[groq])
+        client = LLMClient(
+            providers=[groq],
+            world_state=ws,
+            adapters={},
+        )
+
+        # Simulate 50 successful requests
+        for _ in range(50):
+            client._health_tracker.record_success("groq", 150.0)
+
+        health = client.provider_health()
+        assert health["groq"]["status"] == "healthy"
+        assert health["groq"]["requests_today"] == 50
+        assert health["groq"]["quota_remaining"] == 0.5
+        assert health["groq"]["latency_ms"] == 150.0
