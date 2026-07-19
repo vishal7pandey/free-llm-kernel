@@ -1,5 +1,9 @@
 """Free LLM Kernel — a minimal, provider-agnostic inference kernel."""
 
+from importlib.metadata import version as _pkg_version
+
+__version__ = _pkg_version("free-llm-kernel")
+
 from llm_kernel.client import LLMClient, ModelInfo
 from llm_kernel.core import (
     CAPABILITY_ALIASES,
@@ -48,6 +52,7 @@ from llm_kernel.plugins import (
 )
 
 __all__ = [
+    "__version__",
     "LLMClient",
     "ModelInfo",
     "Extension",

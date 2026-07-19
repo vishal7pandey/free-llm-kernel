@@ -67,7 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PluginRegistry`, entry point discovery (`llm_kernel.providers`,
   `llm_kernel.policies` groups), `load_plugins()`, `register_policy()`
   and `available_policies()` on `LLMClient`, `from_env(plugins=True)`
+- API freeze (v0.9): `__version__` attribute on package, API stability
+  test snapshotting all `__all__` exports across 6 modules, version
+  bumped to 0.9.0
 - `.github/dependabot.yml` for automated dependency updates
 - `SECURITY.md` with vulnerability reporting policy
-- 92 new tests for health tracking, quota-aware routing, per-request policy,
-  capability-based routing, model discovery, and plugin system (322 total)
+- 101 new tests for health tracking, quota-aware routing, per-request policy,
+  capability-based routing, model discovery, plugin system, and API stability
+  (331 total)

@@ -2,6 +2,11 @@
 
 **A resilient runtime for free hosted LLMs.**
 
+[![CI](https://github.com/vishal7pandey/free-llm-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/vishal7pandey/free-llm-kernel/actions)
+![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
+![Version 0.9.0](https://img.shields.io/badge/version-0.9.0-green)
+![API Frozen](https://img.shields.io/badge/API-frozen-brightgreen)
+
 Route, retry, and fail over across Groq, Gemini, Cerebras, SambaNova, Cloudflare Workers AI, and other free providers so your apps keep working — even when individual providers go down or rate-limit you.
 
 ## Why this project exists
@@ -550,6 +555,7 @@ See `docs/`:
 - [x] Capability-based routing (`capabilities="vision"`)
 - [x] Automatic model discovery (`client.refresh_models()`)
 - [x] Plugin API for community providers and policies
+- [x] API freeze (v0.9)
 
 ### Planned
 
@@ -559,15 +565,52 @@ See `docs/`:
 - [x] v0.6 — Automatic model discovery (auto-detect supported features)
 - [ ] v0.7 — Benchmarks and reliability matrix
 - [x] v0.8 — Public plugin API for community providers and policies
-- [ ] v0.9 — API freeze
+- [x] v0.9 — API freeze
 - [ ] v1.0 — Stable, maintained
 
 **Not building:** agents, memory, RAG, vector databases, prompt templates, chains, workflow engines. Those already exist. This project stays focused on execution, resilience, and intelligent routing for free hosted LLMs.
 
+## API Stability (v0.9 — Frozen)
+
+Starting with v0.9, the public API surface is **frozen**. This means:
+
+- **No breaking changes** to existing function signatures, class names, or exports
+- **New features** may be added (additive only) in point releases
+- **Removals or renames** require a major version bump (v1.0 → v2.0)
+- An [API stability test](tests/unit/test_api_stability.py) snapshots all
+  `__all__` exports and fails if the surface changes
+
+### Frozen public API
+
+| Module | Exports |
+|---|---|
+| `llm_kernel` | 44 names (see `__all__`) |
+| `llm_kernel.core` | 33 names |
+| `llm_kernel.planner` | 28 names |
+| `llm_kernel.runtime` | 9 names |
+| `llm_kernel.extensions` | 4 names |
+| `llm_kernel.plugins` | 7 names |
+
+### Stability guarantees
+
+- `LLMClient.chat()`, `.stream()`, `.execute()` — signature stable
+- `LLMClient.from_env()` — signature stable (new keyword-only params OK)
+- `Capability` enum — existing values stable, new values may be added
+- `RoutingPolicy` protocol — `score()` signature stable
+- `ProviderPlugin`, `PolicyPlugin` protocols — stable
+- `resolve_capabilities()`, `infer_capabilities()` — stable
+
+### Version
+
+```python
+import llm_kernel
+print(llm_kernel.__version__)  # "0.9.0"
+```
+
 ## Test Suite
 
 ```bash
-uv run pytest          # 322 tests
+uv run pytest          # 331 tests
 uv run lint-imports    # architecture verification
 ```
 
