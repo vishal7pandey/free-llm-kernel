@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-07-20
+
+### v1.0 — Stable Release
+
+This is the first stable release of Free LLM Kernel. The public API is frozen
+and backed by an automated stability test. The kernel provides intelligent
+routing, automatic failover, quota tracking, circuit breaking, capability-based
+routing, automatic model discovery, and a plugin API for community extensions.
+
+**331 tests** · **6 modules** · **44 public exports** · **7 providers**
+
+### Added in this release cycle
+
+- Quota-aware routing (avoid providers nearing free tier limits)
+- Latency-based routing with historical data
+- Health scoring with circuit breaker integration
+- Per-request policy selection (`policy="best_free"`)
+- Provider Intelligence Engine (`client.provider_health()`)
+- Capability-based routing (`capabilities="vision"`)
+- Automatic model discovery (`client.refresh_models()`)
+- Public plugin API (`ProviderPlugin`, `PolicyPlugin`, entry points)
+- API freeze with stability test snapshotting all exports
+- `__version__` attribute on package
+- `CONTRIBUTING.md` with release process and deprecation policy
+- `SECURITY.md` with vulnerability reporting policy
+- `.github/dependabot.yml` for automated dependency updates
+- `scripts/benchmark.py` reliability benchmark
+
+### Providers
+
+Groq, Google Gemini, Cerebras, SambaNova, Cloudflare Workers AI, Ollama (local)
+
+### Routing Policies
+
+`default`, `best_free`, `fastest`, `cheapest`, `quality` (extensible via plugins)
+
+### Capabilities
+
+`STREAMING`, `TOOLS`, `VISION`, `JSON_MODE`, `JSON_SCHEMA`, `FUNCTION_CALLING`,
+`LONG_CONTEXT`, `REASONING` (with friendly aliases like `json`, `vision`, `tools`)
+
 ### Fixed
 
 - `ExecutionError._redact` now properly redacts API key patterns instead of

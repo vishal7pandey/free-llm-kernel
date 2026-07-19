@@ -4,8 +4,8 @@
 
 [![CI](https://github.com/vishal7pandey/free-llm-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/vishal7pandey/free-llm-kernel/actions)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
-![Version 0.9.0](https://img.shields.io/badge/version-0.9.0-green)
-![API Frozen](https://img.shields.io/badge/API-frozen-brightgreen)
+![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-blue)
+![Stable](https://img.shields.io/badge/status-stable-brightgreen)
 
 Route, retry, and fail over across Groq, Gemini, Cerebras, SambaNova, Cloudflare Workers AI, and other free providers so your apps keep working — even when individual providers go down or rate-limit you.
 
@@ -556,8 +556,9 @@ See `docs/`:
 - [x] Automatic model discovery (`client.refresh_models()`)
 - [x] Plugin API for community providers and policies
 - [x] API freeze (v0.9)
+- [x] **v1.0 — Stable release**
 
-### Planned
+### Post-1.0
 
 - [ ] v0.3 — Feature complete, stop adding providers
 - [ ] v0.4 — Health scoring refinements (availability %, 429 rate tracking)
@@ -566,13 +567,13 @@ See `docs/`:
 - [ ] v0.7 — Benchmarks and reliability matrix
 - [x] v0.8 — Public plugin API for community providers and policies
 - [x] v0.9 — API freeze
-- [ ] v1.0 — Stable, maintained
+- [x] v1.0 — Stable, maintained
 
 **Not building:** agents, memory, RAG, vector databases, prompt templates, chains, workflow engines. Those already exist. This project stays focused on execution, resilience, and intelligent routing for free hosted LLMs.
 
-## API Stability (v0.9 — Frozen)
+## API Stability (v1.0 — Stable)
 
-Starting with v0.9, the public API surface is **frozen**. This means:
+The public API surface is **frozen and stable**. This means:
 
 - **No breaking changes** to existing function signatures, class names, or exports
 - **New features** may be added (additive only) in point releases
@@ -604,7 +605,7 @@ Starting with v0.9, the public API surface is **frozen**. This means:
 
 ```python
 import llm_kernel
-print(llm_kernel.__version__)  # "0.9.0"
+print(llm_kernel.__version__)  # "1.0.0"
 ```
 
 ## Test Suite

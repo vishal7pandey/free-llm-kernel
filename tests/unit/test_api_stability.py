@@ -235,7 +235,7 @@ class TestAPIStability:
 
     def test_version_is_string(self):
         assert isinstance(llm_kernel.__version__, str)
-        assert llm_kernel.__version__ == "0.9.0"
+        assert llm_kernel.__version__ == "1.0.0"
 
     def test_all_exports_are_importable(self):
         """Every name in __all__ must be importable from the top-level package."""
