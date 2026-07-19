@@ -33,6 +33,8 @@ from llm_kernel.planner import (
     ProviderMetadata,
     RetryPolicy,
     TimeoutPolicy,
+    infer_capabilities,
+    infer_model_metadata,
 )
 
 __all__ = [
@@ -58,6 +60,8 @@ __all__ = [
     "FallbackPolicy",
     "RetryPolicy",
     "TimeoutPolicy",
+    "infer_capabilities",
+    "infer_model_metadata",
     "Request",
     "Response",
     "ResponseFormat",

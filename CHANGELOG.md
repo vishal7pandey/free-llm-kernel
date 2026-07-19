@@ -57,7 +57,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CAPABILITY_ALIASES` and `resolve_capabilities()` in core for friendly
   string-to-Capability resolution (e.g. "json" → JSON_MODE, "image" → VISION)
 - `JSON_MODE` capability added to Cerebras and SambaNova models
+- Automatic model discovery: `client.refresh_models()` queries each
+  provider's `/models` endpoint, auto-detects available models, and
+  infers capabilities from model names
+- `infer_capabilities()`, `infer_context_tokens()`, `infer_quality_score()`,
+  and `infer_model_metadata()` in planner for heuristic model metadata inference
+- `discover_models()` method on `OpenAICompatibleAdapter`
 - `.github/dependabot.yml` for automated dependency updates
 - `SECURITY.md` with vulnerability reporting policy
-- 45 new tests for health tracking, quota-aware routing, per-request policy,
-  and capability-based routing (275 total)
+- 75 new tests for health tracking, quota-aware routing, per-request policy,
+  capability-based routing, and model discovery (305 total)

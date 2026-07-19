@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from llm_kernel.core import (
+    Capability,
     Message,
     Request,
     UsageRecord,
@@ -309,6 +310,107 @@ class BestFreePolicy:
         )
 
 
+# ---------------------------------------------------------------------------
+# Model Discovery & Capability Inference
+# ---------------------------------------------------------------------------
+
+# Pattern-based capability inference rules.
+# Each rule is (pattern, frozenset[Capability]).
+# Patterns are matched case-insensitively as substrings of the model ID.
+_CAPABILITY_PATTERNS: list[tuple[str, frozenset[Capability]]] = [
+    # Vision-capable model families
+    ("vision", frozenset({Capability.VISION})),
+    ("vl", frozenset({Capability.VISION})),
+    ("multimodal", frozenset({Capability.VISION})),
+    ("gemini", frozenset({Capability.VISION, Capability.JSON_MODE})),
+    ("gpt-4", frozenset({Capability.VISION, Capability.TOOLS, Capability.JSON_MODE})),
+    # Tool/function calling
+    ("llama-3", frozenset({Capability.TOOLS, Capability.FUNCTION_CALLING})),
+    ("llama3", frozenset({Capability.TOOLS, Capability.FUNCTION_CALLING})),
+    ("mixtral", frozenset({Capability.TOOLS, Capability.FUNCTION_CALLING})),
+    ("qwen", frozenset({Capability.TOOLS, Capability.JSON_MODE})),
+    ("command-r", frozenset({Capability.TOOLS, Capability.FUNCTION_CALLING})),
+    # JSON mode
+    ("json", frozenset({Capability.JSON_MODE})),
+    # Streaming is universally supported on OpenAI-compatible endpoints
+    ("", frozenset({Capability.STREAMING})),
+]
+
+# Context window inference from model name patterns
+_CONTEXT_PATTERNS: list[tuple[str, int]] = [
+    ("gemini", 1_048_576),
+    ("1m", 1_048_576),
+    ("128k", 131_072),
+    ("llama-3.3", 131_072),
+    ("llama3.3", 131_072),
+    ("llama-3.1", 131_072),
+    ("llama3.1", 131_072),
+    ("llama-3.2", 131_072),
+    ("llama3.2", 131_072),
+    ("mixtral", 32_768),
+    ("qwen", 32_768),
+    ("8b", 8_192),
+    ("7b", 8_192),
+    ("3b", 4_096),
+    ("1b", 2_048),
+]
+
+
+def infer_capabilities(model_id: str) -> frozenset[Capability]:
+    """Infer capabilities from a model ID using pattern matching.
+
+    This is a heuristic — it guesses capabilities based on model family names.
+    For production use, prefer explicit capability declarations in config.
+    """
+    lower = model_id.lower()
+    caps: set[Capability] = set()
+    for pattern, capabilities in _CAPABILITY_PATTERNS:
+        if pattern == "" or pattern in lower:
+            caps.update(capabilities)
+    return frozenset(caps)
+
+
+def infer_context_tokens(model_id: str) -> int:
+    """Infer context window size from a model ID. Defaults to 8192."""
+    lower = model_id.lower()
+    for pattern, tokens in _CONTEXT_PATTERNS:
+        if pattern in lower:
+            return tokens
+    return 8_192
+
+
+def infer_quality_score(model_id: str) -> float:
+    """Infer a rough quality score from model size indicators."""
+    lower = model_id.lower()
+    if any(x in lower for x in ("70b", "72b", "405b")):
+        return 0.8
+    if any(x in lower for x in ("32b", "34b", "35b")):
+        return 0.7
+    if any(x in lower for x in ("13b", "14b", "8b", "7b")):
+        return 0.6
+    if any(x in lower for x in ("3b", "1b", "0.5b")):
+        return 0.4
+    if "gemini" in lower or "gpt-4" in lower:
+        return 0.75
+    return 0.5
+
+
+def infer_model_metadata(model_id: str) -> ModelMetadata:
+    """Build a ModelMetadata from a model ID using heuristic inference.
+
+    Used by the model discovery system when a provider's /models endpoint
+    returns model IDs that aren't in the static config.
+    """
+    return ModelMetadata(
+        id=model_id,
+        display_name=model_id,
+        max_context_tokens=infer_context_tokens(model_id),
+        capabilities=infer_capabilities(model_id),
+        quality_score=infer_quality_score(model_id),
+        latency_score=0.8,
+    )
+
+
 POLICY_REGISTRY: dict[str, type[RoutingPolicy]] = {
     "default": DefaultRoutingPolicy,
     "best_free": BestFreePolicy,
@@ -522,6 +624,10 @@ __all__ = [
     "QualityPolicy",
     "POLICY_REGISTRY",
     "resolve_policy",
+    "infer_capabilities",
+    "infer_context_tokens",
+    "infer_quality_score",
+    "infer_model_metadata",
     "Planner",
     "PlanningError",
     "Candidate",

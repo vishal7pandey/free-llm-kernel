@@ -106,6 +106,32 @@ request = Request(
 response = client.execute(request)
 ```
 
+### Automatic model discovery
+
+Query each provider's `/models` endpoint to auto-detect available models
+and infer their capabilities:
+
+```python
+# Discover models from all providers
+discovered = client.refresh_models()
+# {"groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", ...],
+#  "google": ["gemini-2.0-flash", "gemini-2.0-flash-lite", ...]}
+
+# New models are automatically added with inferred capabilities
+models = client.models()
+```
+
+The kernel infers capabilities from model names (e.g. `llama-3.3-70b` →
+`TOOLS`, `FUNCTION_CALLING`; `gemini-2.0-flash` → `VISION`, `JSON_MODE`).
+You can also use the inference functions directly:
+
+```python
+from llm_kernel import infer_capabilities, infer_model_metadata
+
+caps = infer_capabilities("llama-3.3-70b")  # {TOOLS, FUNCTION_CALLING, STREAMING}
+meta = infer_model_metadata("qwen-2.5-72b")  # full ModelMetadata with inferred fields
+```
+
 ## Model Catalogue
 
 ```python
@@ -413,13 +439,14 @@ See `docs/`:
 - [x] Per-request policy selection (`policy="best_free"`)
 - [x] Provider Intelligence Engine (`client.provider_health()`)
 - [x] Capability-based routing (`capabilities="vision"`)
+- [x] Automatic model discovery (`client.refresh_models()`)
 
 ### Planned
 
 - [ ] v0.3 — Feature complete, stop adding providers
 - [ ] v0.4 — Health scoring refinements (availability %, 429 rate tracking)
 - [x] v0.5 — Capability-based routing ("give me vision" → kernel picks)
-- [ ] v0.6 — Automatic model discovery (auto-detect supported features)
+- [x] v0.6 — Automatic model discovery (auto-detect supported features)
 - [ ] v0.7 — Benchmarks and reliability matrix
 - [ ] v0.8 — Public plugin API for community providers and policies
 - [ ] v0.9 — API freeze
@@ -430,7 +457,7 @@ See `docs/`:
 ## Test Suite
 
 ```bash
-uv run pytest          # 275 tests
+uv run pytest          # 305 tests
 uv run lint-imports    # architecture verification
 ```
 

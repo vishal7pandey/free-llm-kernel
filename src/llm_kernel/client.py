@@ -23,7 +23,14 @@ from llm_kernel.core import (
     resolve_capabilities,
 )
 from llm_kernel.extensions import Extension, MiddlewareChain, UsageStore
-from llm_kernel.planner import ModelMetadata, Planner, ProviderMetadata, RoutingPolicy, WorldState
+from llm_kernel.planner import (
+    ModelMetadata,
+    Planner,
+    ProviderMetadata,
+    RoutingPolicy,
+    WorldState,
+    infer_model_metadata,
+)
 from llm_kernel.runtime import (
     AdapterConfig,
     Executor,
@@ -440,6 +447,54 @@ class LLMClient:
             adapters=self._adapters,
             health_tracker=self._health_tracker,
         )
+
+    def refresh_models(self) -> dict[str, list[str]]:
+        """Query each provider's /models endpoint and update the model catalogue.
+
+        For each adapter, calls discover_models() to get the live list of
+        available model IDs. New models not in the static config are added
+        with inferred capabilities and metadata. Removed models are kept
+        (they may come back).
+
+        Returns a dict mapping provider name to list of discovered model IDs.
+        """
+        discovered: dict[str, list[str]] = {}
+        changed = False
+
+        for provider in self._providers:
+            adapter = self._adapters.get(provider.name)
+            if adapter is None:
+                continue
+
+            model_ids = adapter.discover_models()
+            discovered[provider.name] = model_ids
+            if not model_ids:
+                continue
+
+            existing_ids = {m.id for m in provider.models}
+            new_ids = [mid for mid in model_ids if mid not in existing_ids]
+
+            if new_ids:
+                changed = True
+                new_models = list(provider.models)
+                for mid in new_ids:
+                    new_models.append(infer_model_metadata(mid))
+
+                # Update provider in-place by replacing in the list
+                updated_provider = provider.model_copy(update={"models": new_models})
+                idx = self._providers.index(provider)
+                self._providers[idx] = updated_provider
+
+        if changed:
+            self._world_state = WorldState(
+                providers=self._providers,
+                usage=dict(self._world_state.usage),
+                latency=dict(self._world_state.latency),
+                health=dict(self._world_state.health),
+            )
+            self._planner = Planner(self._world_state)
+
+        return discovered
 
 
 __all__ = ["LLMClient", "ModelInfo"]

@@ -393,6 +393,32 @@ class OpenAICompatibleAdapter:
         except httpx.HTTPError:
             return "unhealthy"
 
+    def discover_models(self) -> list[str]:
+        """Query the provider's /models endpoint and return available model IDs.
+
+        Returns an empty list if the endpoint is unavailable or errors.
+        """
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.config.api_key.get()}",
+            }
+            if self.config.extra_headers:
+                headers.update(self.config.extra_headers)
+
+            response = self._client.get(
+                f"{self.config.base_url}/models",
+                headers=headers,
+                timeout=15.0,
+            )
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+            models = data.get("data", [])
+            return [m.get("id", "") for m in models if m.get("id")]
+        except (httpx.HTTPError, json.JSONDecodeError, KeyError):
+            return []
+
     def _post(
         self,
         path: str,
