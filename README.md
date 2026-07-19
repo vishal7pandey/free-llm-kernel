@@ -400,3 +400,18 @@ See `docs/`:
 uv run pytest          # 258 tests
 uv run lint-imports    # architecture verification
 ```
+
+## Reliability Benchmark
+
+Measure per-provider latency, success rate, and failover behavior with live API calls:
+
+```bash
+uv run python scripts/benchmark.py                          # default: 5 req/provider
+uv run python scripts/benchmark.py --requests 10            # more requests
+uv run python scripts/benchmark.py --prompt "Hello"         # custom prompt
+uv run python scripts/benchmark.py --skip-providers         # only test policies
+```
+
+Outputs a provider reliability matrix (success rate, avg/p95 latency, error count),
+a policy routing matrix (which providers each policy selects), and a live snapshot
+from the Provider Intelligence Engine.

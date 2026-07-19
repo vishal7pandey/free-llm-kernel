@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `provider_health()` method on `LLMClient`: Provider Intelligence Engine
   surface for introspecting live health, latency, and quota per provider
 - `POLICY_REGISTRY` and `resolve_policy()` in planner for policy name resolution
+- `scripts/benchmark.py` — reliability benchmark measuring per-provider latency,
+  success rate, and failover behavior across routing policies
 - `.github/dependabot.yml` for automated dependency updates
 - `SECURITY.md` with vulnerability reporting policy
 - 28 new tests for health tracking, quota-aware routing, and per-request policy
