@@ -36,3 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `project.urls`, `license`, and `authors` metadata in `pyproject.toml`
 - `CHANGELOG.md`
+- `HealthTracker` in runtime layer: tracks per-provider health status, rolling
+  latency averages, and daily request counts with quota remaining calculation
+- `BestFreePolicy` routing policy: combines health status, quota remaining,
+  latency history, and model quality for optimal free provider selection
+- `daily_request_limit` field on `ProviderMetadata` for free tier quota awareness
+- `LLMClient` now wires `HealthTracker` into `Executor` and refreshes `WorldState`
+  with live health/quota data before each request
+- `.github/dependabot.yml` for automated dependency updates
+- `SECURITY.md` with vulnerability reporting policy
+- 17 new tests for health tracking and quota-aware routing (247 total)

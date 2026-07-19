@@ -138,16 +138,17 @@ The Planner filters providers by capability and context window ("what can execut
 The RoutingPolicy scores and orders the survivors ("what should execute?").
 
 ```python
-from llm_kernel.planner import Planner, WorldState, FastestPolicy, CheapestPolicy, QualityPolicy
+from llm_kernel.planner import Planner, WorldState, FastestPolicy, CheapestPolicy, QualityPolicy, BestFreePolicy
 from llm_kernel.config import default_providers, build_world_state
 
 providers = default_providers()
 world_state = build_world_state(providers)
 
-# Use fastest policy (prioritize latency)
-planner = Planner(world_state, policy=FastestPolicy())
+# Use best free policy (health + quota + latency aware)
+planner = Planner(world_state, policy=BestFreePolicy())
 
-# Or cheapest, or quality
+# Or fastest, cheapest, or quality
+planner = Planner(world_state, policy=FastestPolicy())
 planner = Planner(world_state, policy=CheapestPolicy())
 planner = Planner(world_state, policy=QualityPolicy())
 

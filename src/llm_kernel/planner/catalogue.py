@@ -49,6 +49,7 @@ class ProviderMetadata(KernelModel):
     priority: int = 0
     capabilities: frozenset[Capability] = Field(default_factory=frozenset)
     privacy_level: PrivacyLevel = PrivacyLevel.UNKNOWN
+    daily_request_limit: int | None = None
 
     @model_validator(mode="after")
     def _validate_provider_metadata(self) -> Self:

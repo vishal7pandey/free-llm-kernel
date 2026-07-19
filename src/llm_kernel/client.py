@@ -26,6 +26,7 @@ from llm_kernel.planner import ModelMetadata, Planner, ProviderMetadata, WorldSt
 from llm_kernel.runtime import (
     AdapterConfig,
     Executor,
+    HealthTracker,
     OpenAICompatibleAdapter,
 )
 
@@ -80,14 +81,21 @@ class LLMClient:
         adapters: dict[str, OpenAICompatibleAdapter],
         usage_store: UsageStore | None = None,
         extensions: list[Extension] | None = None,
+        health_tracker: HealthTracker | None = None,
     ):
         self._providers = providers
         self._world_state = world_state
         self._adapters = adapters
         self._usage_store = usage_store
         self._middleware = MiddlewareChain(extensions)
+        self._health_tracker = health_tracker or HealthTracker(
+            daily_limits={p.name: p.daily_request_limit for p in providers},
+        )
         self._planner = Planner(world_state)
-        self._executor = Executor(adapters=adapters)
+        self._executor = Executor(
+            adapters=adapters,
+            health_tracker=self._health_tracker,
+        )
 
     @classmethod
     def from_env(
@@ -174,6 +182,7 @@ class LLMClient:
 
         This is the advanced API (INTERFACE.md §8.1). Use chat() for simple cases.
         """
+        self._refresh_world_state()
         request = self._middleware.on_request(request)
 
         plan = self._planner.plan(request)
@@ -195,6 +204,18 @@ class LLMClient:
 
         error_msg = str(result.error) if result.error else "All providers failed"
         raise KernelError(error_msg)
+
+    def _refresh_world_state(self) -> None:
+        """Rebuild WorldState with current health and quota from HealthTracker."""
+        health = self._health_tracker.get_health()
+        quota = self._health_tracker.get_quota()
+        self._world_state = WorldState(
+            providers=list(self._providers),
+            usage=dict(quota.usage),
+            latency=dict(quota.latency),
+            health=dict(health.status),
+        )
+        self._planner = Planner(self._world_state)
 
     def stream(
         self,
@@ -346,8 +367,14 @@ class LLMClient:
             latency=dict(self._world_state.latency),
             health=dict(self._world_state.health),
         )
+        self._health_tracker = HealthTracker(
+            daily_limits={p.name: p.daily_request_limit for p in self._providers},
+        )
         self._planner = Planner(self._world_state)
-        self._executor = Executor(adapters=self._adapters)
+        self._executor = Executor(
+            adapters=self._adapters,
+            health_tracker=self._health_tracker,
+        )
 
 
 __all__ = ["LLMClient", "ModelInfo"]

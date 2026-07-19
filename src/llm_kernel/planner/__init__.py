@@ -255,6 +255,60 @@ class QualityPolicy:
         return score
 
 
+class BestFreePolicy:
+    """Pick the best available free provider with quota and health awareness.
+
+    Combines:
+    - Health status (skip unhealthy, penalize degraded)
+    - Quota remaining (avoid providers nearing free tier limits)
+    - Latency history (prefer providers with lower observed latency)
+    - Model quality (tiebreaker)
+    """
+
+    def score(
+        self,
+        request: Request,
+        provider: ProviderMetadata,
+        model: ModelMetadata,
+        estimated_tokens: int,
+        health: HealthSnapshot,
+        quota: QuotaSnapshot,
+    ) -> float:
+        if not health.is_available(provider.name):
+            return -1.0
+
+        health_status = health.status.get(provider.name, "healthy")
+        health_score = {"healthy": 1.0, "degraded": 0.3, "unhealthy": 0.0}.get(
+            health_status, 1.0,
+        )
+
+        usage = quota.get_usage(provider.name)
+        if usage and provider.daily_request_limit and provider.daily_request_limit > 0:
+            quota_remaining = max(
+                0.0, 1.0 - usage.request_count / provider.daily_request_limit,
+            )
+        else:
+            quota_remaining = 1.0
+
+        latency_history = quota.get_latency(provider.name)
+        if latency_history is not None and latency_history > 0:
+            latency_score = max(0.0, 1.0 - latency_history / 2000.0)
+        else:
+            latency_score = model.latency_score
+
+        model_match = 0.0
+        if request.model and (model.id == request.model or request.model in model.id):
+            model_match = 100.0
+
+        return (
+            health_score * 0.35
+            + quota_remaining * 0.30
+            + latency_score * 0.20
+            + model.quality_score * 0.15
+            + model_match
+        )
+
+
 # ---------------------------------------------------------------------------
 # Token Estimation
 # ---------------------------------------------------------------------------
@@ -428,6 +482,7 @@ __all__ = [
     "QuotaSnapshot",
     "RoutingPolicy",
     "DefaultRoutingPolicy",
+    "BestFreePolicy",
     "FastestPolicy",
     "CheapestPolicy",
     "QualityPolicy",

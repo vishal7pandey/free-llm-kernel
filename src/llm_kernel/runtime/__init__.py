@@ -32,7 +32,9 @@ from llm_kernel.core import (
 from llm_kernel.planner import (
     Candidate,
     ExecutionPlan,
+    HealthSnapshot,
     ProviderMetadata,
+    QuotaSnapshot,
 )
 
 # ---------------------------------------------------------------------------
@@ -65,6 +67,86 @@ class Attempt:
     started_at: str
     ended_at: str | None = None
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Health Tracker
+# ---------------------------------------------------------------------------
+
+
+class HealthTracker:
+    """Mutable runtime health state for providers.
+
+    Tracks per-provider health status, rolling latency averages, and
+    daily request counts. Updated by the Executor after each attempt.
+    The Planner can query this to make routing decisions.
+    """
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+
+    def __init__(self, daily_limits: dict[str, int | None] | None = None):
+        self._health: dict[str, str] = {}
+        self._latency_samples: dict[str, list[float]] = {}
+        self._request_counts: dict[str, int] = {}
+        self._daily_limits = daily_limits or {}
+        self._failure_streaks: dict[str, int] = {}
+
+    def record_success(self, provider: str, latency_ms: float) -> None:
+        samples = self._latency_samples.setdefault(provider, [])
+        samples.append(latency_ms)
+        if len(samples) > 20:
+            samples.pop(0)
+
+        self._failure_streaks[provider] = 0
+        self._request_counts[provider] = self._request_counts.get(provider, 0) + 1
+
+        if self._health.get(provider) == self.UNHEALTHY:
+            self._health[provider] = self.DEGRADED
+        elif self._health.get(provider) == self.DEGRADED:
+            self._health[provider] = self.HEALTHY
+
+    def record_failure(self, provider: str, category: str) -> None:
+        streak = self._failure_streaks.get(provider, 0) + 1
+        self._failure_streaks[provider] = streak
+
+        if category == "rate_limit":
+            self._health[provider] = self.DEGRADED
+        elif streak >= 3:
+            self._health[provider] = self.UNHEALTHY
+        elif streak >= 2:
+            self._health[provider] = self.DEGRADED
+
+    def get_health(self) -> HealthSnapshot:
+        return HealthSnapshot(dict(self._health))
+
+    def get_quota(self) -> QuotaSnapshot:
+        usage: dict[str, Any] = {}
+        for provider, count in self._request_counts.items():
+            usage[provider] = {
+                "provider": provider,
+                "model": "",
+                "day": datetime.now(UTC).strftime("%Y-%m-%d"),
+                "request_count": count,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+            }
+        latency: dict[str, float] = {}
+        for provider, samples in self._latency_samples.items():
+            if samples:
+                latency[provider] = sum(samples) / len(samples)
+        return QuotaSnapshot(usage=usage, latency=latency)
+
+    def quota_remaining(self, provider: str) -> float:
+        limit = self._daily_limits.get(provider)
+        if limit is None or limit <= 0:
+            return 1.0
+        used = self._request_counts.get(provider, 0)
+        return max(0.0, 1.0 - used / limit)
+
+    def is_available(self, provider: str) -> bool:
+        return self._health.get(provider, self.HEALTHY) != self.UNHEALTHY
 
 
 @dataclass(frozen=True)
@@ -569,11 +651,13 @@ class Executor:
         adapters: Mapping[str, Adapter],
         retry_engine: RetryEngine | None = None,
         circuit_breakers: dict[str, CircuitBreaker] | None = None,
+        health_tracker: HealthTracker | None = None,
         sleep_fn: Any = time.sleep,
     ):
         self.adapters = adapters
         self.retry_engine = retry_engine or RetryEngine()
         self.circuit_breakers = circuit_breakers or {}
+        self.health_tracker = health_tracker
         self._sleep = sleep_fn
 
     def execute(self, plan: ExecutionPlan) -> ExecutionResult:
@@ -624,6 +708,10 @@ class Executor:
             try:
                 response = adapter.execute(plan, candidate.model)
                 cb.record_success()
+                if self.health_tracker is not None:
+                    self.health_tracker.record_success(
+                        candidate.provider, response.latency_ms,
+                    )
                 attempts.append(
                     Attempt(
                         trace_id=plan.trace_id,
@@ -662,6 +750,10 @@ class Executor:
                     continue
 
                 cb.record_failure()
+                if self.health_tracker is not None:
+                    self.health_tracker.record_failure(
+                        candidate.provider, exc.category.value,
+                    )
                 raise exc
 
         raise ExecutionError(
@@ -680,6 +772,7 @@ __all__ = [
     "Attempt",
     "ExecutionResult",
     "CircuitBreaker",
+    "HealthTracker",
     "RetryEngine",
     "Adapter",
     "OpenAICompatibleAdapter",

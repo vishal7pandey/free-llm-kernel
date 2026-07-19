@@ -22,6 +22,7 @@ from llm_kernel.core import (
 )
 from llm_kernel.extensions import Extension, MiddlewareChain
 from llm_kernel.planner import (
+    BestFreePolicy,
     Candidate,
     ExecutionPlan,
     FallbackPolicy,
@@ -37,6 +38,7 @@ __all__ = [
     "ModelInfo",
     "Extension",
     "MiddlewareChain",
+    "BestFreePolicy",
     "Capability",
     "ErrorCategory",
     "ExecutionError",

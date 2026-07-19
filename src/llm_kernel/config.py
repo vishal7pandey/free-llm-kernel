@@ -68,6 +68,7 @@ def default_providers() -> list[ProviderMetadata]:
             priority=0,
             capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
             privacy_level=PrivacyLevel.NO_TRAINING,
+            daily_request_limit=1000,
         ),
         ProviderMetadata(
             name="google",
@@ -112,6 +113,7 @@ def default_providers() -> list[ProviderMetadata]:
             priority=1,
             capabilities=frozenset({Capability.STREAMING, Capability.VISION, Capability.JSON_MODE}),
             privacy_level=PrivacyLevel.NO_TRAINING,
+            daily_request_limit=1500,
         ),
         ProviderMetadata(
             name="cloudflare",
@@ -134,6 +136,7 @@ def default_providers() -> list[ProviderMetadata]:
             priority=2,
             capabilities=frozenset({Capability.STREAMING}),
             privacy_level=PrivacyLevel.NO_TRAINING,
+            daily_request_limit=10000,
         ),
         ProviderMetadata(
             name="cerebras",
@@ -156,6 +159,7 @@ def default_providers() -> list[ProviderMetadata]:
             priority=0,
             capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
             privacy_level=PrivacyLevel.UNKNOWN,
+            daily_request_limit=1000,
         ),
         ProviderMetadata(
             name="sambanova",
@@ -178,6 +182,7 @@ def default_providers() -> list[ProviderMetadata]:
             priority=1,
             capabilities=frozenset({Capability.STREAMING, Capability.TOOLS}),
             privacy_level=PrivacyLevel.UNKNOWN,
+            daily_request_limit=None,
         ),
         ProviderMetadata(
             name="ollama",
@@ -200,6 +205,7 @@ def default_providers() -> list[ProviderMetadata]:
             priority=3,
             capabilities=frozenset({Capability.STREAMING}),
             privacy_level=PrivacyLevel.NO_TRAINING,
+            daily_request_limit=None,
         ),
     ]
 
