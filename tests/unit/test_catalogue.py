@@ -6,7 +6,7 @@ Run: uv run pytest tests/unit/test_catalogue.py -v
 import pytest
 
 from llm_kernel import LLMClient
-from llm_kernel.config import default_providers, build_world_state, build_adapters
+from llm_kernel.config import build_adapters, build_world_state, default_providers
 from llm_kernel.core import Capability
 
 
@@ -96,9 +96,8 @@ class TestModelCatalogue:
         assert best.quality_score == 0.8
 
     def test_add_custom_provider(self, client):
-        from llm_kernel.planner import ProviderMetadata, ModelMetadata
         from llm_kernel.core import Secret
-        from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
+        from llm_kernel.planner import ModelMetadata, ProviderMetadata
 
         custom = ProviderMetadata(
             name="custom",

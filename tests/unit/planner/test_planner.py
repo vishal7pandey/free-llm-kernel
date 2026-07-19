@@ -9,7 +9,7 @@ import pytest
 
 class TestWorldState:
     def test_world_state_creation(self):
-        from llm_kernel.planner import WorldState, ProviderMetadata, ModelMetadata
+        from llm_kernel.planner import ModelMetadata, ProviderMetadata, WorldState
 
         provider = ProviderMetadata(
             name="groq",
@@ -17,7 +17,11 @@ class TestWorldState:
             adapter_type="openai",
             base_url="https://api.groq.com/openai/v1",
             api_key_env="GROQ_API_KEY",
-            models=[ModelMetadata(id="llama-3.3-70b", display_name="Llama 3.3 70B", max_context_tokens=128000)],
+            models=[
+                ModelMetadata(
+                    id="llama-3.3-70b", display_name="Llama 3.3 70B", max_context_tokens=128000
+                )
+            ],
             default_model="llama-3.3-70b",
         )
 
@@ -29,8 +33,8 @@ class TestWorldState:
 class TestPlannerPlan:
     @pytest.fixture
     def sample_providers(self):
-        from llm_kernel.planner import ProviderMetadata, ModelMetadata
         from llm_kernel.core import Capability
+        from llm_kernel.planner import ModelMetadata, ProviderMetadata
 
         return [
             ProviderMetadata(
@@ -63,7 +67,11 @@ class TestPlannerPlan:
                         id="gemini-2.0-flash",
                         display_name="Gemini 2.0 Flash",
                         max_context_tokens=1000000,
-                        capabilities={Capability.STREAMING, Capability.VISION, Capability.JSON_MODE},
+                        capabilities={
+                            Capability.STREAMING,
+                            Capability.VISION,
+                            Capability.JSON_MODE,
+                        },
                         quality_score=0.85,
                         latency_score=0.8,
                     )
@@ -100,7 +108,7 @@ class TestPlannerPlan:
         return Planner(world_state=ws)
 
     def test_plan_returns_execution_plan(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(messages=[Message(role=Role.USER, content="Hello!")])
         plan = planner.plan(request)
@@ -109,7 +117,7 @@ class TestPlannerPlan:
         assert plan.trace_id == request.trace_id
 
     def test_plan_selects_highest_scoring_provider_first(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(messages=[Message(role=Role.USER, content="Hello!")])
         plan = planner.plan(request)
@@ -119,7 +127,7 @@ class TestPlannerPlan:
         assert plan.candidates[0].model == "llama-3.3-70b"
 
     def test_plan_filters_by_capability(self, planner):
-        from llm_kernel.core import Request, Message, Role, Capability
+        from llm_kernel.core import Capability, Message, Request, Role
 
         request = Request(
             messages=[Message(role=Role.USER, content="Use a tool")],
@@ -133,7 +141,7 @@ class TestPlannerPlan:
         assert "google" not in provider_names
 
     def test_plan_filters_by_context_window(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         # Long prompt that exceeds 8k context (8k tokens * 4 chars/token = 32k chars)
         long_text = "word " * 7000  # ~35k characters, estimated tokens > 8k
@@ -146,10 +154,10 @@ class TestPlannerPlan:
 
     def test_plan_raises_planning_error_when_no_provider_matches(self, planner):
         from llm_kernel.core import (
-            Request,
-            Message,
-            Role,
             Capability,
+            Message,
+            Request,
+            Role,
         )
         from llm_kernel.planner import PlanningError
 
@@ -162,7 +170,7 @@ class TestPlannerPlan:
             planner.plan(request)
 
     def test_plan_candidates_sorted_by_score_descending(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(messages=[Message(role=Role.USER, content="Hello!")])
         plan = planner.plan(request)
@@ -171,7 +179,7 @@ class TestPlannerPlan:
         assert scores == sorted(scores, reverse=True)
 
     def test_plan_no_duplicate_candidates(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(messages=[Message(role=Role.USER, content="Hello!")])
         plan = planner.plan(request)
@@ -180,7 +188,7 @@ class TestPlannerPlan:
         assert len(keys) == len(set(keys))
 
     def test_plan_respects_user_forced_model(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(
             messages=[Message(role=Role.USER, content="Hello!")],
@@ -192,7 +200,7 @@ class TestPlannerPlan:
         assert plan.candidates[0].model == "gemini-2.0-flash"
 
     def test_plan_deterministic(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(messages=[Message(role=Role.USER, content="Hello!")])
         plan1 = planner.plan(request)
@@ -201,7 +209,7 @@ class TestPlannerPlan:
         assert plan1 == plan2
 
     def test_plan_does_not_mutate_request(self, planner):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         request = Request(messages=[Message(role=Role.USER, content="Hello!")])
         original = request

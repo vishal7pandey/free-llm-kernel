@@ -5,7 +5,6 @@ Run: uv run pytest tests/unit/core -v
 """
 
 import json
-from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -122,7 +121,7 @@ class TestUsage:
 
 class TestRequest:
     def test_request_basic(self):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         r = Request(messages=[Message(role=Role.USER, content="Hello!")])
         assert len(r.messages) == 1
@@ -137,7 +136,7 @@ class TestRequest:
             Request(messages=[])
 
     def test_request_temperature_range(self):
-        from llm_kernel.core import Request, Message, Role, ValidationError
+        from llm_kernel.core import Message, Request, Role, ValidationError
 
         base = {"messages": [Message(role=Role.USER, content="Hi")]}
         Request(**base, temperature=0.0)
@@ -148,7 +147,7 @@ class TestRequest:
             Request(**base, temperature=2.1)
 
     def test_request_top_p_range(self):
-        from llm_kernel.core import Request, Message, Role, ValidationError
+        from llm_kernel.core import Message, Request, Role, ValidationError
 
         base = {"messages": [Message(role=Role.USER, content="Hi")]}
         Request(**base, top_p=0.5)
@@ -156,7 +155,7 @@ class TestRequest:
             Request(**base, top_p=1.5)
 
     def test_request_max_tokens_positive(self):
-        from llm_kernel.core import Request, Message, Role, ValidationError
+        from llm_kernel.core import Message, Request, Role, ValidationError
 
         base = {"messages": [Message(role=Role.USER, content="Hi")]}
         with pytest.raises(ValidationError):
@@ -165,14 +164,14 @@ class TestRequest:
             Request(**base, max_tokens=-5)
 
     def test_request_timeout_positive(self):
-        from llm_kernel.core import Request, Message, Role, ValidationError
+        from llm_kernel.core import Message, Request, Role, ValidationError
 
         base = {"messages": [Message(role=Role.USER, content="Hi")]}
         with pytest.raises(ValidationError):
             Request(**base, timeout_ms=0)
 
     def test_request_last_message_must_be_user_or_tool(self):
-        from llm_kernel.core import Request, Message, Role, ValidationError
+        from llm_kernel.core import Message, Request, Role, ValidationError
 
         with pytest.raises(ValidationError):
             Request(
@@ -183,14 +182,14 @@ class TestRequest:
             )
 
     def test_request_trace_id_unique(self):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         r1 = Request(messages=[Message(role=Role.USER, content="A")])
         r2 = Request(messages=[Message(role=Role.USER, content="B")])
         assert r1.trace_id != r2.trace_id
 
     def test_request_tools_require_capability(self):
-        from llm_kernel.core import Request, Message, Role, Tool, FunctionTool, ValidationError
+        from llm_kernel.core import FunctionTool, Message, Request, Role, Tool, ValidationError
 
         tool = Tool(
             type="function",
@@ -203,7 +202,7 @@ class TestRequest:
             )
 
     def test_request_frozen(self):
-        from llm_kernel.core import Request, Message, Role, ValidationError
+        from llm_kernel.core import Message, Request, Role, ValidationError
 
         r = Request(messages=[Message(role=Role.USER, content="Hi")])
         with pytest.raises(ValidationError):
@@ -212,7 +211,7 @@ class TestRequest:
 
 class TestResponse:
     def test_response_basic(self):
-        from llm_kernel.core import Response, FinishReason, Usage
+        from llm_kernel.core import FinishReason, Response, Usage
 
         resp = Response(
             trace_id="t1",
@@ -228,7 +227,7 @@ class TestResponse:
         assert resp.provider == "groq"
 
     def test_response_content_filter_with_none(self):
-        from llm_kernel.core import Response, FinishReason, Usage
+        from llm_kernel.core import FinishReason, Response, Usage
 
         resp = Response(
             trace_id="t1",
@@ -243,7 +242,7 @@ class TestResponse:
         assert resp.content is None
 
     def test_response_finish_reason_tool_calls_requires_tool_calls(self):
-        from llm_kernel.core import Response, FinishReason, Usage, ValidationError
+        from llm_kernel.core import FinishReason, Response, Usage, ValidationError
 
         with pytest.raises(ValidationError):
             Response(
@@ -258,7 +257,7 @@ class TestResponse:
             )
 
     def test_response_latency_non_negative(self):
-        from llm_kernel.core import Response, FinishReason, Usage, ValidationError
+        from llm_kernel.core import FinishReason, Response, Usage, ValidationError
 
         with pytest.raises(ValidationError):
             Response(
@@ -273,7 +272,7 @@ class TestResponse:
             )
 
     def test_response_frozen(self):
-        from llm_kernel.core import Response, FinishReason, Usage, ValidationError
+        from llm_kernel.core import FinishReason, Response, Usage, ValidationError
 
         resp = Response(
             trace_id="t1",
@@ -291,7 +290,7 @@ class TestResponse:
 
 class TestSerialization:
     def test_request_json_roundtrip(self):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
 
         r = Request(
             messages=[Message(role=Role.USER, content="Hello!")],
@@ -302,7 +301,7 @@ class TestSerialization:
         assert loaded == r
 
     def test_response_json_roundtrip(self):
-        from llm_kernel.core import Response, FinishReason, Usage
+        from llm_kernel.core import FinishReason, Response, Usage
 
         resp = Response(
             trace_id="t1",

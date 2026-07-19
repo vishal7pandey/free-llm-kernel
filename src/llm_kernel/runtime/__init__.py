@@ -5,12 +5,14 @@ This layer is the only one allowed to make network calls.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import random
 import time
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Iterator, Literal, Mapping, Protocol
+from datetime import UTC, datetime
+from typing import Any, Literal, Protocol
 
 import httpx
 
@@ -32,7 +34,6 @@ from llm_kernel.planner import (
     ExecutionPlan,
     ProviderMetadata,
 )
-
 
 # ---------------------------------------------------------------------------
 # Configuration & Result Types
@@ -116,7 +117,7 @@ class CircuitBreaker:
 
     def allow_request(self) -> bool:
         """Return True if a request is currently allowed."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if self._state == self.CLOSED:
             return True
         if self._state == self.OPEN:
@@ -136,13 +137,13 @@ class CircuitBreaker:
         """Record a provider failure."""
         if self._state == self.HALF_OPEN:
             self._state = self.OPEN
-            self._opened_at = datetime.now(timezone.utc)
+            self._opened_at = datetime.now(UTC)
             return
 
         self._failure_count += 1
         if self._failure_count >= self.failure_threshold:
             self._state = self.OPEN
-            self._opened_at = datetime.now(timezone.utc)
+            self._opened_at = datetime.now(UTC)
 
     def record_success(self) -> None:
         """Record a provider success."""
@@ -154,7 +155,7 @@ class CircuitBreaker:
             return
 
         if self._state == self.OPEN:
-            if self._cooldown_elapsed(datetime.now(timezone.utc)):
+            if self._cooldown_elapsed(datetime.now(UTC)):
                 # Treat as a successful half-open probe.
                 self._state = self.CLOSED
                 self._failure_count = 0
@@ -205,7 +206,7 @@ class RetryEngine:
 
     def backoff_delay(self, attempt: int) -> int:
         """Exponential backoff with ±25% jitter, capped at max_ms."""
-        delay = self.base_ms * (2 ** attempt)
+        delay = self.base_ms * (2**attempt)
         if self.jitter:
             delay = int(delay * random.uniform(0.75, 1.25))
         return int(min(delay, self.max_ms))
@@ -249,8 +250,10 @@ class OpenAICompatibleAdapter:
     def execute(self, plan: ExecutionPlan, model: str) -> Response:
         """Execute a non-streaming request and return a Response."""
         body = self._build_body(plan.request, model, stream=False)
+        start = time.monotonic()
         http_response = self._post("chat/completions", body, plan.trace_id)
-        return self._parse_response(http_response, plan.trace_id, model)
+        latency_ms = (time.monotonic() - start) * 1000
+        return self._parse_response(http_response, plan.trace_id, model, latency_ms)
 
     def stream(self, plan: ExecutionPlan, model: str) -> Iterator[str]:
         """Execute a streaming request and yield content chunks."""
@@ -419,6 +422,8 @@ class OpenAICompatibleAdapter:
             body["response_format"] = request.response_format.model_dump(exclude_none=True)
         if request.tools:
             body["tools"] = [t.model_dump(exclude_none=True) for t in request.tools]
+        if request.tools and request.tool_choice:
+            body["tool_choice"] = request.tool_choice
         if self.config.extra_body:
             body.update(self.config.extra_body)
         return body
@@ -435,7 +440,7 @@ class OpenAICompatibleAdapter:
         return data
 
     def _parse_response(
-        self, http_response: httpx.Response, trace_id: str, model: str
+        self, http_response: httpx.Response, trace_id: str, model: str, latency_ms: float = 0.0,
     ) -> Response:
         try:
             data = http_response.json()
@@ -493,14 +498,14 @@ class OpenAICompatibleAdapter:
                 tc_function = raw_tc.get("function", {})
                 tc_name = tc_function.get("name", "")
                 tc_arguments = tc_function.get("arguments", "{}")
-                try:
-                    tool_calls.append(ToolCall(
-                        id=tc_id,
-                        type=tc_type,
-                        function=FunctionCall(name=tc_name, arguments=tc_arguments),
-                    ))
-                except ValidationError:
-                    pass
+                with contextlib.suppress(ValidationError):
+                    tool_calls.append(
+                        ToolCall(
+                            id=tc_id,
+                            type=tc_type,
+                            function=FunctionCall(name=tc_name, arguments=tc_arguments),
+                        )
+                    )
 
         # Adjust finish_reason for tool calls
         if tool_calls and finish_reason == FinishReason.COMPLETED:
@@ -516,7 +521,7 @@ class OpenAICompatibleAdapter:
             provider=self.config.provider_name,
             model=data.get("model", model),
             usage=usage,
-            latency_ms=0.0,
+            latency_ms=latency_ms,
             metadata={"raw": data},
         )
 
@@ -615,7 +620,7 @@ class Executor:
     ) -> ExecutionResult:
         max_retries = plan.retry_policy.max_retries
         for attempt in range(max_retries + 1):
-            started = datetime.now(timezone.utc).isoformat()
+            started = datetime.now(UTC).isoformat()
             try:
                 response = adapter.execute(plan, candidate.model)
                 cb.record_success()
@@ -625,7 +630,7 @@ class Executor:
                         provider=candidate.provider,
                         model=candidate.model,
                         started_at=started,
-                        ended_at=datetime.now(timezone.utc).isoformat(),
+                        ended_at=datetime.now(UTC).isoformat(),
                         error=None,
                     )
                 )
@@ -641,7 +646,7 @@ class Executor:
                         provider=candidate.provider,
                         model=candidate.model,
                         started_at=started,
-                        ended_at=datetime.now(timezone.utc).isoformat(),
+                        ended_at=datetime.now(UTC).isoformat(),
                         error=str(exc),
                     )
                 )
@@ -667,9 +672,7 @@ class Executor:
         )
 
     def _circuit_breaker(self, provider_name: str) -> CircuitBreaker:
-        return self.circuit_breakers.setdefault(
-            provider_name, CircuitBreaker()
-        )
+        return self.circuit_breakers.setdefault(provider_name, CircuitBreaker())
 
 
 __all__ = [

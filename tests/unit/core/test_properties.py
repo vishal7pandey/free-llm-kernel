@@ -5,9 +5,6 @@ Covers DVM:
 - C-07: All Core types round-trip through JSON without data loss
 """
 
-import pytest
-from hypothesis import given, strategies as st
-
 from llm_kernel.core import (
     Capability,
     FinishReason,
@@ -92,6 +89,7 @@ class TestJsonRoundTrip:
 
     def test_request_json_string_round_trip(self):
         import json
+
         req = Request(
             messages=[Message(role=Role.USER, content="Hello!")],
             model="groq-model",

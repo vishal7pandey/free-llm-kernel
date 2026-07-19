@@ -4,9 +4,6 @@ These tests use respx to mock provider HTTP endpoints.
 Run: uv run pytest tests/unit/runtime -v
 """
 
-import json
-from datetime import datetime, timezone
-
 import pytest
 import respx
 from httpx import Response as HttpxResponse
@@ -32,8 +29,9 @@ class TestCircuitBreaker:
         assert cb.allow_request() is False
 
     def test_half_open_after_cooldown(self):
-        from llm_kernel.runtime import CircuitBreaker
         from freezegun import freeze_time
+
+        from llm_kernel.runtime import CircuitBreaker
 
         with freeze_time("2026-01-01 00:00:00"):
             cb = CircuitBreaker(failure_threshold=2, cooldown_ms=1000)
@@ -106,9 +104,8 @@ class TestRetryEngine:
 class TestOpenAICompatibleAdapter:
     @pytest.fixture
     def plan(self):
-        from llm_kernel.core import Request, Message, Role
-        from llm_kernel.planner import ExecutionPlan, ProviderMetadata, ModelMetadata
-        from llm_kernel.runtime import AdapterConfig
+        from llm_kernel.core import Message, Request, Role
+        from llm_kernel.planner import ExecutionPlan, ModelMetadata, ProviderMetadata
 
         provider = ProviderMetadata(
             name="mock",
@@ -129,8 +126,8 @@ class TestOpenAICompatibleAdapter:
 
     @respx.mock
     def test_execute_returns_response(self, plan):
-        from llm_kernel.runtime import OpenAICompatibleAdapter, AdapterConfig
         from llm_kernel.core import Secret
+        from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
 
         execution_plan, provider = plan
 
@@ -167,8 +164,8 @@ class TestOpenAICompatibleAdapter:
 
     @respx.mock
     def test_execute_raises_on_429(self, plan):
-        from llm_kernel.runtime import OpenAICompatibleAdapter, AdapterConfig
-        from llm_kernel.core import Secret, ExecutionError
+        from llm_kernel.core import ExecutionError, Secret
+        from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
 
         execution_plan, provider = plan
 
@@ -196,8 +193,8 @@ class TestOpenAICompatibleAdapter:
 
     @respx.mock
     def test_stream_returns_chunks(self, plan):
-        from llm_kernel.runtime import OpenAICompatibleAdapter, AdapterConfig
         from llm_kernel.core import Secret
+        from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
 
         execution_plan, provider = plan
 
@@ -230,8 +227,8 @@ class TestOpenAICompatibleAdapter:
 
     @respx.mock
     def test_health_check_pings_models(self, plan):
-        from llm_kernel.runtime import OpenAICompatibleAdapter, AdapterConfig
         from llm_kernel.core import Secret
+        from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
 
         _, provider = plan
 
@@ -255,12 +252,12 @@ class TestOpenAICompatibleAdapter:
 class TestExecutor:
     @pytest.fixture
     def plan(self):
-        from llm_kernel.core import Request, Message, Role
+        from llm_kernel.core import Message, Request, Role
         from llm_kernel.planner import (
-            ExecutionPlan,
             Candidate,
-            ProviderMetadata,
+            ExecutionPlan,
             ModelMetadata,
+            ProviderMetadata,
         )
 
         provider = ProviderMetadata(
@@ -283,8 +280,8 @@ class TestExecutor:
         return plan, provider
 
     def test_execute_success(self, plan):
-        from llm_kernel.runtime import Executor, OpenAICompatibleAdapter, AdapterConfig
         from llm_kernel.core import Secret
+        from llm_kernel.runtime import AdapterConfig, Executor, OpenAICompatibleAdapter
 
         execution_plan, provider = plan
 
@@ -324,18 +321,22 @@ class TestExecutor:
         assert result.final_state == "completed"
 
     def test_execute_falls_back_on_failure(self, plan):
-        from llm_kernel.runtime import Executor, OpenAICompatibleAdapter, AdapterConfig
-        from llm_kernel.core import Secret, Request, Message, Role
+        from llm_kernel.core import Message, Request, Role, Secret
         from llm_kernel.planner import (
             Candidate,
             ExecutionPlan,
-            RetryPolicy,
-            ProviderMetadata,
             ModelMetadata,
+            ProviderMetadata,
+            RetryPolicy,
         )
+        from llm_kernel.runtime import AdapterConfig, Executor, OpenAICompatibleAdapter
 
         execution_plan, provider = plan
-        request = Request(messages=[Message(role=Role.USER, content="Hello!"),])
+        request = Request(
+            messages=[
+                Message(role=Role.USER, content="Hello!"),
+            ]
+        )
         execution_plan = ExecutionPlan(
             trace_id=request.trace_id,
             request=request,
@@ -405,8 +406,8 @@ class TestExecutor:
         assert result.final_state == "completed"
 
     def test_execute_returns_failure_when_all_candidates_fail(self, plan):
-        from llm_kernel.runtime import Executor, OpenAICompatibleAdapter, AdapterConfig
         from llm_kernel.core import Secret
+        from llm_kernel.runtime import AdapterConfig, Executor, OpenAICompatibleAdapter
 
         execution_plan, provider = plan
 

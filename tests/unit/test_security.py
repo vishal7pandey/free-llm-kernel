@@ -18,11 +18,11 @@ from llm_kernel.core import (
     Role,
     Secret,
 )
+from llm_kernel.extensions.logging import redact_secrets
 from llm_kernel.runtime import (
     AdapterConfig,
     OpenAICompatibleAdapter,
 )
-from llm_kernel.extensions.logging import redact_secrets
 
 
 class TestSecretType:
@@ -50,7 +50,10 @@ class TestErrorCredentialLeakage:
             trace_id="t1",
             provider="groq",
             category=ErrorCategory.AUTH,
-            message="Authentication failed for key: gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
+            message=(
+                "Authentication failed for key:"
+                " gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV"
+            ),
             recoverable=False,
             retryable=False,
         )
@@ -88,7 +91,8 @@ class TestErrorCredentialLeakage:
         )
 
         req = Request(messages=[Message(role=Role.USER, content="hi")])
-        from llm_kernel.planner import ExecutionPlan, Candidate
+        from llm_kernel.planner import Candidate, ExecutionPlan
+
         plan = ExecutionPlan(
             trace_id=req.trace_id,
             request=req,
@@ -116,7 +120,8 @@ class TestErrorCredentialLeakage:
         )
 
         req = Request(messages=[Message(role=Role.USER, content="hi")])
-        from llm_kernel.planner import ExecutionPlan, Candidate
+        from llm_kernel.planner import Candidate, ExecutionPlan
+
         plan = ExecutionPlan(
             trace_id=req.trace_id,
             request=req,

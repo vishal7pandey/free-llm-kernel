@@ -3,10 +3,7 @@
 Run: uv run pytest tests/unit/test_config -v
 """
 
-import os
 from pathlib import Path
-
-import pytest
 
 
 class TestProviderRegistry:
@@ -54,7 +51,7 @@ class TestLoadConfig:
         assert env == {}
 
     def test_build_world_state_from_providers(self):
-        from llm_kernel.config import default_providers, build_world_state
+        from llm_kernel.config import build_world_state, default_providers
         from llm_kernel.planner import WorldState
 
         providers = default_providers()
@@ -63,7 +60,7 @@ class TestLoadConfig:
         assert len(ws.providers) == len(providers)
 
     def test_build_adapters_from_env(self, tmp_path: Path):
-        from llm_kernel.config import default_providers, build_adapters, load_env
+        from llm_kernel.config import build_adapters, default_providers, load_env
         from llm_kernel.runtime import OpenAICompatibleAdapter
 
         env_file = tmp_path / ".env"

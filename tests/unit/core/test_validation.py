@@ -3,8 +3,6 @@
 These tests exercise ValidationError and the public validate() helper.
 """
 
-import pytest
-
 
 class TestValidationError:
     def test_validation_error_message(self):

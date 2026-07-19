@@ -4,7 +4,6 @@ Covers DVM: E-01 (logging), E-02 (secret redaction), S-02 (Secret type redacts).
 """
 
 import logging
-import re
 from io import StringIO
 
 import pytest
@@ -20,23 +19,26 @@ from llm_kernel.core import (
 )
 from llm_kernel.extensions.logging import (
     LoggingExtension,
-    redact_secrets,
     redact_request,
     redact_response,
+    redact_secrets,
 )
 
 
 class TestSecretRedaction:
-    @pytest.mark.parametrize("key", [
-        "gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
-        "AIzaSyFAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQR",
-        "csk-fakeplaceholder1234567890abcdefghijklmnopqrstuv",
-        "sk-or-v1-FAKEPLACEHOLDER1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234",
-        "sk-proj-abc123def456ghi789jkl012mno345pqr678stu901vwx234yz",
-        "nvapi-FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
-        "cfut_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
-        "a9f5e5f4-1a09-492f-a818-e6c523f6fa1d",
-    ])
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
+            "AIzaSyFAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQR",
+            "csk-fakeplaceholder1234567890abcdefghijklmnopqrstuv",
+            "sk-or-v1-FAKEPLACEHOLDER1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234",
+            "sk-proj-abc123def456ghi789jkl012mno345pqr678stu901vwx234yz",
+            "nvapi-FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
+            "cfut_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
+            "a9f5e5f4-1a09-492f-a818-e6c523f6fa1d",
+        ],
+    )
     def test_redact_known_key_formats(self, key):
         text = f"Error: invalid key {key}"
         redacted = redact_secrets(text)
@@ -48,7 +50,10 @@ class TestSecretRedaction:
         assert redact_secrets(text) == text
 
     def test_redact_multiple_keys_in_one_string(self):
-        text = "keys: gsk_abc123def456ghi789jkl012mno345 and AIzaSyFAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQR"
+        text = (
+            "keys: gsk_abc123def456ghi789jkl012mno345"
+            " and AIzaSyFAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQR"
+        )
         result = redact_secrets(text)
         assert "gsk_" not in result
         assert "AIza" not in result
@@ -83,7 +88,12 @@ class TestRequestRedaction:
 
     def test_redact_request_no_secrets(self):
         req = Request(
-            messages=[Message(role=Role.USER, content="My key is gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV")]
+            messages=[
+                Message(
+                    role=Role.USER,
+                    content="My key is gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
+                )
+            ]
         )
         safe = redact_request(req)
         safe_str = str(safe)
@@ -136,6 +146,7 @@ class TestLoggingExtension:
 
     def test_logging_extension_implements_protocol(self):
         from llm_kernel.extensions import Extension
+
         ext = LoggingExtension()
         assert isinstance(ext, Extension)
 
@@ -151,7 +162,12 @@ class TestLoggingExtension:
         logger, stream = log_capture
         ext = LoggingExtension(logger=logger, level=logging.INFO)
         req = Request(
-            messages=[Message(role=Role.USER, content="My key is gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV")]
+            messages=[
+                Message(
+                    role=Role.USER,
+                    content="My key is gsk_FAKEPLACEHOLDER1234567890ABCDEFGHIJKLMNOPQRSTUV",
+                )
+            ]
         )
         ext.on_request(req)
         output = stream.getvalue()

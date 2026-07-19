@@ -3,6 +3,9 @@ name = "free-llm-kernel"
 version = "0.1.0"
 description = "A minimal, provider-agnostic inference kernel for free LLM APIs with automatic fallback"
 requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Vishal Pandey" }]
+urls = { Homepage = "https://github.com/vishal7pandey/free-llm-kernel", Repository = "https://github.com/vishal7pandey/free-llm-kernel", Issues = "https://github.com/vishal7pandey/free-llm-kernel/issues" }
 dependencies = [
     "httpx>=0.27",
     "pydantic>=2.0",
@@ -54,6 +57,8 @@ exclude = [".venv", "build", "dist"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
 
 [tool.bandit]

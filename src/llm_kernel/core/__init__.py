@@ -8,13 +8,12 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError as PydanticValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import ValidationError as PydanticValidationError
 from pydantic_core import core_schema as cs
-
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -138,7 +137,9 @@ class Secret:
         return cs.no_info_plain_validator_function(
             cls._pydantic_validate,
             serialization=cs.plain_serializer_function_ser_schema(
-                lambda v, info: v._value if info and getattr(info, "mode", None) == "python" else "***",
+                lambda v, info: (
+                    v._value if info and getattr(info, "mode", None) == "python" else "***"
+                ),
                 return_schema=cs.str_schema(),
                 when_used="json-unless-none",
             ),
@@ -190,7 +191,9 @@ class KernelModel(BaseModel):
         try:
             super().__setattr__(name, value)
         except PydanticValidationError as exc:
-            raise ValidationError(f"Cannot mutate {self.__class__.__name__}: {name} is frozen") from exc
+            raise ValidationError(
+                f"Cannot mutate {self.__class__.__name__}: {name} is frozen"
+            ) from exc
 
 
 class ContentPart(KernelModel):
@@ -240,12 +243,10 @@ class Message(KernelModel):
     def _validate_message(self) -> Self:
         if self.role == Role.USER:
             content = self.content
-            if isinstance(content, str):
-                if content.strip() == "":
-                    raise ValidationError("User message content cannot be empty")
-            elif isinstance(content, list):
-                if not content:
-                    raise ValidationError("User message content list cannot be empty")
+            if isinstance(content, str) and content.strip() == "":
+                raise ValidationError("User message content cannot be empty")
+            elif isinstance(content, list) and not content:
+                raise ValidationError("User message content list cannot be empty")
         return self
 
 
@@ -431,13 +432,13 @@ class ExecutionError(KernelError):
         """Remove common secret patterns from error strings."""
         # API keys and tokens
         patterns = [
-            r"(sk-[a-zA-Z0-9_-]{20,})",
-            r"(AIza[0-9A-Za-z_-]{35,})",
-            r"(nvapi-[a-zA-Z0-9_-]{20,})",
-            r"([a-f0-9]{32,})",  # hex tokens (broad, may catch account ids too)
+            r"sk-[a-zA-Z0-9_-]{20,}",
+            r"AIza[0-9A-Za-z_-]{35,}",
+            r"nvapi-[a-zA-Z0-9_-]{20,}",
+            r"[a-f0-9]{32,}",
         ]
         for pattern in patterns:
-            text = re.sub(pattern, r"\1"[:4] + "***", text)
+            text = re.sub(pattern, "***", text)
         return text
 
 
@@ -455,13 +456,12 @@ class UsageRecord(KernelModel):
     completion_tokens: int = 0
 
 
-from llm_kernel.core.state_machine import (
+from llm_kernel.core.state_machine import (  # noqa: E402
+    TERMINAL_STATES,
     InvalidStateTransition,
     RequestState,
     RequestStateMachine,
-    TERMINAL_STATES,
 )
-
 
 # ---------------------------------------------------------------------------
 # Legacy public API compatibility

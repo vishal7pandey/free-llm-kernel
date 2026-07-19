@@ -11,8 +11,6 @@ import respx
 from httpx import Response as HttpxResponse
 
 from llm_kernel.core import (
-    ErrorCategory,
-    ExecutionError,
     FinishReason,
     Message,
     Request,
@@ -22,13 +20,12 @@ from llm_kernel.core import (
 from llm_kernel.planner import (
     Candidate,
     ExecutionPlan,
-    ProviderMetadata,
     ModelMetadata,
+    ProviderMetadata,
     RetryPolicy,
 )
 from llm_kernel.runtime import (
     AdapterConfig,
-    CircuitBreaker,
     Executor,
     OpenAICompatibleAdapter,
     RetryEngine,
@@ -107,10 +104,13 @@ class TestRetryOnTransient:
             side_effect=[
                 HttpxResponse(503, json={"error": {"message": "Service unavailable"}}),
                 HttpxResponse(503, json={"error": {"message": "Service unavailable"}}),
-                HttpxResponse(200, json={
-                    "choices": [{"message": {"content": "Hi!"}, "finish_reason": "stop"}],
-                    "usage": {"prompt_tokens": 5, "completion_tokens": 3},
-                }),
+                HttpxResponse(
+                    200,
+                    json={
+                        "choices": [{"message": {"content": "Hi!"}, "finish_reason": "stop"}],
+                        "usage": {"prompt_tokens": 5, "completion_tokens": 3},
+                    },
+                ),
             ]
         )
 
@@ -139,10 +139,13 @@ class TestRetryOnTransient:
         respx.post(url).mock(
             side_effect=[
                 HttpxResponse(502, json={"error": {"message": "Bad gateway"}}),
-                HttpxResponse(200, json={
-                    "choices": [{"message": {"content": "Hi!"}, "finish_reason": "stop"}],
-                    "usage": {"prompt_tokens": 5, "completion_tokens": 3},
-                }),
+                HttpxResponse(
+                    200,
+                    json={
+                        "choices": [{"message": {"content": "Hi!"}, "finish_reason": "stop"}],
+                        "usage": {"prompt_tokens": 5, "completion_tokens": 3},
+                    },
+                ),
             ]
         )
 
@@ -217,13 +220,18 @@ class TestContentNoneHandling:
 
         url = "https://api.mock.com/v1/chat/completions"
         respx.post(url).mock(
-            return_value=HttpxResponse(200, json={
-                "choices": [{
-                    "message": {"content": None},
-                    "finish_reason": "content_filter",
-                }],
-                "usage": {"prompt_tokens": 5, "completion_tokens": 0},
-            })
+            return_value=HttpxResponse(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {"content": None},
+                            "finish_reason": "content_filter",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 0},
+                },
+            )
         )
 
         response = adapter.execute(plan, "model-1")

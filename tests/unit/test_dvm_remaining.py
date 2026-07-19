@@ -9,25 +9,17 @@ Covers:
 """
 
 import ast
-import json
 from pathlib import Path
-
-import pytest
 
 from llm_kernel.core import (
     ErrorCategory,
     ExecutionError,
     FinishReason,
-    Message,
-    Request,
     Response,
-    Role,
     Secret,
     Usage,
 )
-from llm_kernel.planner import Candidate, ExecutionPlan
 from llm_kernel.extensions import Extension
-
 
 # ---------------------------------------------------------------------------
 # C-01: Core purity — no forbidden imports
@@ -35,14 +27,25 @@ from llm_kernel.extensions import Extension
 
 
 FORBIDDEN_MODULES = {
-    "requests", "urllib", "urllib3", "httpx", "httpcore",
-    "openai", "anthropic",
-    "os", "sys", "subprocess",
+    "requests",
+    "urllib",
+    "urllib3",
+    "httpx",
+    "httpcore",
+    "openai",
+    "anthropic",
+    "os",
+    "sys",
+    "subprocess",
     "logging",
-    "socket", "asyncio",
+    "socket",
+    "asyncio",
     "io",
-    "sqlite3", "shutil", "pickle",
-    "aiohttp", "aiofiles",
+    "sqlite3",
+    "shutil",
+    "pickle",
+    "aiohttp",
+    "aiofiles",
 }
 
 
@@ -54,19 +57,22 @@ class TestCorePurity:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     modules.add(alias.name.split(".")[0])
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    modules.add(node.module.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                modules.add(node.module.split(".")[0])
         return modules
 
     def test_core_init_no_forbidden_imports(self):
-        core_init = Path(__file__).resolve().parents[2] / "src" / "llm_kernel" / "core" / "__init__.py"
+        core_init = (
+            Path(__file__).resolve().parents[2] / "src" / "llm_kernel" / "core" / "__init__.py"
+        )
         modules = self._get_imported_modules(core_init)
         forbidden = modules & FORBIDDEN_MODULES
         assert not forbidden, f"Core imports forbidden modules: {forbidden}"
 
     def test_core_state_machine_no_forbidden_imports(self):
-        sm_file = Path(__file__).resolve().parents[2] / "src" / "llm_kernel" / "core" / "state_machine.py"
+        sm_file = (
+            Path(__file__).resolve().parents[2] / "src" / "llm_kernel" / "core" / "state_machine.py"
+        )
         modules = self._get_imported_modules(sm_file)
         forbidden = modules & FORBIDDEN_MODULES
         assert not forbidden, f"core.state_machine imports forbidden modules: {forbidden}"
@@ -75,8 +81,9 @@ class TestCorePurity:
         core_dir = Path(__file__).resolve().parents[2] / "src" / "llm_kernel" / "core"
         for pyfile in core_dir.glob("*.py"):
             content = pyfile.read_text()
-            assert "open(" not in content or "open(" in content.split("#")[0] and False, \
+            assert "open(" not in content or "open(" in content.split("#")[0] and False, (
                 f"{pyfile.name} contains open() call"
+            )
             assert "os.getenv" not in content, f"{pyfile.name} contains os.getenv"
             assert "os.environ" not in content, f"{pyfile.name} contains os.environ"
 
@@ -93,6 +100,7 @@ class TestReprRedaction:
         # Message content is user-provided text, not a credential.
         # This test verifies that Secret fields are redacted in repr.
         from llm_kernel.runtime import AdapterConfig
+
         config = AdapterConfig(
             provider_name="groq",
             base_url="https://api.groq.com/openai/v1",
@@ -103,6 +111,7 @@ class TestReprRedaction:
 
     def test_adapter_config_repr_redacts_secret(self):
         from llm_kernel.runtime import AdapterConfig
+
         config = AdapterConfig(
             provider_name="groq",
             base_url="https://api.groq.com/openai/v1",
@@ -196,10 +205,18 @@ class TestExtensionOnResponse:
                     usage=response.usage,
                     latency_ms=response.latency_ms,
                 )
-            def on_request(self, request): return request
-            def on_plan(self, plan): pass
-            def on_execution_start(self, plan): pass
-            def on_execution_end(self, result): pass
+
+            def on_request(self, request):
+                return request
+
+            def on_plan(self, plan):
+                pass
+
+            def on_execution_start(self, plan):
+                pass
+
+            def on_execution_end(self, result):
+                pass
 
         ext = ModifyingExtension()
         result = ext.on_response(original)
@@ -221,10 +238,18 @@ class TestExtensionOnResponse:
         class PassthroughExtension(Extension):
             def on_response(self, response):
                 return response
-            def on_request(self, request): return request
-            def on_plan(self, plan): pass
-            def on_execution_start(self, plan): pass
-            def on_execution_end(self, result): pass
+
+            def on_request(self, request):
+                return request
+
+            def on_plan(self, plan):
+                pass
+
+            def on_execution_start(self, plan):
+                pass
+
+            def on_execution_end(self, result):
+                pass
 
         ext = PassthroughExtension()
         result = ext.on_response(original)
@@ -238,11 +263,13 @@ class TestExtensionOnResponse:
 
 class TestStreamingUsageCount:
     def test_usage_recorded_once_on_success(self, tmp_path):
-        from llm_kernel.extensions import UsageStore
         from llm_kernel.core import Usage
+        from llm_kernel.extensions import UsageStore
 
         store = UsageStore(path=tmp_path / "usage.json")
-        store.record("groq", "llama-3.3-70b", Usage(prompt_tokens=10, completion_tokens=5, total_tokens=15))
+        store.record(
+            "groq", "llama-3.3-70b", Usage(prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        )
 
         records = store.get_today()
         assert len(records) == 1
@@ -250,12 +277,14 @@ class TestStreamingUsageCount:
         assert records[0].prompt_tokens == 10
 
     def test_usage_accumulates_correctly(self, tmp_path):
-        from llm_kernel.extensions import UsageStore
         from llm_kernel.core import Usage
+        from llm_kernel.extensions import UsageStore
 
         store = UsageStore(path=tmp_path / "usage.json")
         # Simulate: first attempt fails, second succeeds — only record once
-        store.record("groq", "llama-3.3-70b", Usage(prompt_tokens=10, completion_tokens=5, total_tokens=15))
+        store.record(
+            "groq", "llama-3.3-70b", Usage(prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        )
 
         records = store.get_today()
         assert len(records) == 1

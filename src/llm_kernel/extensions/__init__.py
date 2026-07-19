@@ -7,12 +7,11 @@ lower layers (runtime, planner, core).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from llm_kernel.core import (
-    ExecutionError,
     KernelError,
     Request,
     Response,
@@ -20,7 +19,6 @@ from llm_kernel.core import (
     UsageRecord,
 )
 from llm_kernel.planner import ExecutionPlan
-
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -201,7 +199,7 @@ class UsageStore:
 
     def clear_expired(self, keep_days: int = 30) -> None:
         """Remove entries older than keep_days."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=keep_days)).strftime("%Y-%m-%d")
+        cutoff = (datetime.now(UTC) - timedelta(days=keep_days)).strftime("%Y-%m-%d")
         self._data = {d: v for d, v in self._data.items() if d >= cutoff}
         self._save()
 
@@ -224,7 +222,7 @@ class UsageStore:
         return result
 
     def _today(self) -> str:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return datetime.now(UTC).strftime("%Y-%m-%d")
 
     def _load(self) -> None:
         if self._path is None or not self._path.exists():
@@ -233,10 +231,9 @@ class UsageStore:
             raw = json.loads(self._path.read_text())
             for day, entries in raw.items():
                 self._data[day] = {
-                    key: UsageRecord.model_validate(entry)
-                    for key, entry in entries.items()
+                    key: UsageRecord.model_validate(entry) for key, entry in entries.items()
                 }
-        except (json.JSONDecodeError, Exception):
+        except (json.JSONDecodeError, ValueError, TypeError):
             pass
 
     def _save(self) -> None:
@@ -244,10 +241,7 @@ class UsageStore:
             return
         serializable: dict[str, dict[str, Any]] = {}
         for day, entries in self._data.items():
-            serializable[day] = {
-                key: record.model_dump()
-                for key, record in entries.items()
-            }
+            serializable[day] = {key: record.model_dump() for key, record in entries.items()}
         self._path.write_text(json.dumps(serializable, indent=2))
 
 

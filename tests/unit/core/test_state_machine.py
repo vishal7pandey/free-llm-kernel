@@ -6,10 +6,10 @@ Covers DVM X-05: terminal states are absorbing.
 import pytest
 
 from llm_kernel.core import (
+    TERMINAL_STATES,
     InvalidStateTransition,
     RequestState,
     RequestStateMachine,
-    TERMINAL_STATES,
 )
 
 

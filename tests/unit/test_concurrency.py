@@ -7,10 +7,6 @@ Covers:
 """
 
 import threading
-import time
-from pathlib import Path
-
-import pytest
 
 from llm_kernel.core import Usage
 from llm_kernel.extensions import UsageStore
@@ -78,6 +74,7 @@ class TestConcurrentUsageWrites:
 
         # File should be valid JSON
         import json
+
         data = json.loads(path.read_text())
         assert "groq:model-1" in data.get(data.keys().__iter__().__next__(), {})
 
@@ -86,7 +83,7 @@ class TestRetryStormPrevention:
     def test_total_attempts_bounded(self):
         from llm_kernel.runtime import RetryEngine
 
-        engine = RetryEngine(base_ms=1, max_ms=10, jitter=False)
+        RetryEngine(base_ms=1, max_ms=10, jitter=False)
         max_retries = 2
 
         # Simulate 10 concurrent clients, each with max_retries

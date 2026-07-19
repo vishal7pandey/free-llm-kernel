@@ -1,5 +1,6 @@
 """Free LLM Kernel — a minimal, provider-agnostic inference kernel."""
 
+from llm_kernel.client import LLMClient, ModelInfo
 from llm_kernel.core import (
     Capability,
     ErrorCategory,
@@ -19,6 +20,7 @@ from llm_kernel.core import (
     Usage,
     ValidationError,
 )
+from llm_kernel.extensions import Extension, MiddlewareChain
 from llm_kernel.planner import (
     Candidate,
     ExecutionPlan,
@@ -29,8 +31,6 @@ from llm_kernel.planner import (
     RetryPolicy,
     TimeoutPolicy,
 )
-from llm_kernel.client import LLMClient, ModelInfo
-from llm_kernel.extensions import Extension, MiddlewareChain
 
 __all__ = [
     "LLMClient",

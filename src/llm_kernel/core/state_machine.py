@@ -22,29 +22,41 @@ class RequestState(StrEnum):
     TIMED_OUT = "timed_out"
 
 
-TERMINAL_STATES: frozenset[RequestState] = frozenset({
-    RequestState.COMPLETED,
-    RequestState.FAILED,
-    RequestState.CANCELLED,
-    RequestState.TIMED_OUT,
-})
+TERMINAL_STATES: frozenset[RequestState] = frozenset(
+    {
+        RequestState.COMPLETED,
+        RequestState.FAILED,
+        RequestState.CANCELLED,
+        RequestState.TIMED_OUT,
+    }
+)
 
 _ALLOWED_TRANSITIONS: dict[RequestState, frozenset[RequestState]] = {
     RequestState.PENDING: frozenset({RequestState.PLANNED, RequestState.CANCELLED}),
-    RequestState.PLANNED: frozenset({RequestState.EXECUTING, RequestState.CANCELLED, RequestState.FAILED}),
-    RequestState.EXECUTING: frozenset({
-        RequestState.STREAMING,
-        RequestState.COMPLETED,
-        RequestState.FAILED,
-        RequestState.TIMED_OUT,
-        RequestState.CANCELLED,
-    }),
-    RequestState.STREAMING: frozenset({
-        RequestState.COMPLETED,
-        RequestState.FAILED,
-        RequestState.TIMED_OUT,
-        RequestState.CANCELLED,
-    }),
+    RequestState.PLANNED: frozenset(
+        {
+            RequestState.EXECUTING,
+            RequestState.CANCELLED,
+            RequestState.FAILED,
+        }
+    ),
+    RequestState.EXECUTING: frozenset(
+        {
+            RequestState.STREAMING,
+            RequestState.COMPLETED,
+            RequestState.FAILED,
+            RequestState.TIMED_OUT,
+            RequestState.CANCELLED,
+        }
+    ),
+    RequestState.STREAMING: frozenset(
+        {
+            RequestState.COMPLETED,
+            RequestState.FAILED,
+            RequestState.TIMED_OUT,
+            RequestState.CANCELLED,
+        }
+    ),
     RequestState.COMPLETED: frozenset(),
     RequestState.FAILED: frozenset(),
     RequestState.CANCELLED: frozenset(),
@@ -52,7 +64,7 @@ _ALLOWED_TRANSITIONS: dict[RequestState, frozenset[RequestState]] = {
 }
 
 
-class InvalidStateTransition(KernelError):
+class InvalidStateTransition(KernelError):  # noqa: N818
     """Raised when an illegal state transition is attempted."""
 
 

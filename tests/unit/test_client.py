@@ -12,8 +12,7 @@ class TestLLMClient:
     @pytest.fixture
     def client(self):
         from llm_kernel import LLMClient
-        from llm_kernel.config import default_providers, build_world_state, build_adapters
-        from llm_kernel.core import Secret
+        from llm_kernel.config import build_adapters, build_world_state, default_providers
 
         all_providers = default_providers()
         # Only use groq and google for tests

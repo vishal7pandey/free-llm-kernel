@@ -14,12 +14,9 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from llm_kernel.core import (
-    Capability,
-    KernelError,
     Message,
     Request,
     UsageRecord,
-    ValidationError,
 )
 from llm_kernel.planner.catalogue import ModelMetadata, ProviderMetadata
 from llm_kernel.planner.plan import (
@@ -30,7 +27,6 @@ from llm_kernel.planner.plan import (
     RetryPolicy,
     TimeoutPolicy,
 )
-
 
 # ---------------------------------------------------------------------------
 # Read-only state views (replaces monolithic WorldState)
@@ -348,7 +344,14 @@ class Planner:
         candidates: list[Candidate] = []
         for provider in state.providers:
             for model in provider.models:
-                candidate = self._evaluate(request, provider, model, estimated_tokens, health, quota)
+                candidate = self._evaluate(
+                    request,
+                    provider,
+                    model,
+                    estimated_tokens,
+                    health,
+                    quota,
+                )
                 if candidate is not None:
                     candidates.append(candidate)
 

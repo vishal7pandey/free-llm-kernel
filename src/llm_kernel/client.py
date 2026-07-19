@@ -8,8 +8,9 @@ Usage:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Iterator
+from typing import Any
 
 from llm_kernel.core import (
     Capability,
@@ -20,19 +21,19 @@ from llm_kernel.core import (
     Role,
     Secret,
 )
+from llm_kernel.extensions import Extension, MiddlewareChain, UsageStore
 from llm_kernel.planner import ModelMetadata, Planner, ProviderMetadata, WorldState
 from llm_kernel.runtime import (
     AdapterConfig,
-    ExecutionResult,
     Executor,
     OpenAICompatibleAdapter,
 )
-from llm_kernel.extensions import Extension, MiddlewareChain, UsageStore
 
 
 @dataclass(frozen=True)
 class ModelInfo:
     """Catalogue entry for a single model."""
+
     provider: str
     model_id: str
     display_name: str
@@ -45,7 +46,7 @@ class ModelInfo:
     latency_score: float
 
     @classmethod
-    def from_metadata(cls, provider_name: str, m: ModelMetadata) -> "ModelInfo":
+    def from_metadata(cls, provider_name: str, m: ModelMetadata) -> ModelInfo:
         return cls(
             provider=provider_name,
             model_id=m.id,
@@ -93,14 +94,14 @@ class LLMClient:
         cls,
         env_path: str | None = None,
         usage_path: str | None = None,
-    ) -> "LLMClient":
+    ) -> LLMClient:
         """Build a client from .env file and default provider registry."""
         from llm_kernel.config import (
-            default_providers,
-            resolve_env,
-            build_world_state,
             build_adapters,
+            build_world_state,
+            default_providers,
             filter_available_providers,
+            resolve_env,
         )
 
         env = resolve_env(env_path)
@@ -241,9 +242,7 @@ class LLMClient:
                     raise  # Already committed to this provider
                 continue  # Try next candidate
 
-        raise KernelError(
-            str(last_error) if last_error else "No adapter available for streaming"
-        )
+        raise KernelError(str(last_error) if last_error else "No adapter available for streaming")
 
     @property
     def providers(self) -> list[ProviderMetadata]:

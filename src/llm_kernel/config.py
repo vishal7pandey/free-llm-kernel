@@ -18,7 +18,6 @@ from llm_kernel.core import (
 from llm_kernel.planner import ModelMetadata, ProviderMetadata, WorldState
 from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
 
-
 # ---------------------------------------------------------------------------
 # Provider Registry
 # ---------------------------------------------------------------------------
@@ -39,7 +38,13 @@ def default_providers() -> list[ProviderMetadata]:
                     display_name="Llama 3.3 70B",
                     max_context_tokens=131_072,
                     max_output_tokens=32_768,
-                    capabilities=frozenset({Capability.STREAMING, Capability.TOOLS, Capability.FUNCTION_CALLING}),
+                    capabilities=frozenset(
+                        {
+                            Capability.STREAMING,
+                            Capability.TOOLS,
+                            Capability.FUNCTION_CALLING,
+                        }
+                    ),
                     quality_score=0.8,
                     latency_score=0.95,
                 ),
@@ -48,7 +53,13 @@ def default_providers() -> list[ProviderMetadata]:
                     display_name="Llama 3.1 8B",
                     max_context_tokens=131_072,
                     max_output_tokens=8_192,
-                    capabilities=frozenset({Capability.STREAMING, Capability.TOOLS, Capability.FUNCTION_CALLING}),
+                    capabilities=frozenset(
+                        {
+                            Capability.STREAMING,
+                            Capability.TOOLS,
+                            Capability.FUNCTION_CALLING,
+                        }
+                    ),
                     quality_score=0.6,
                     latency_score=0.98,
                 ),
@@ -70,7 +81,14 @@ def default_providers() -> list[ProviderMetadata]:
                     display_name="Gemini 2.0 Flash",
                     max_context_tokens=1_048_576,
                     max_output_tokens=8_192,
-                    capabilities=frozenset({Capability.STREAMING, Capability.VISION, Capability.JSON_MODE, Capability.TOOLS}),
+                    capabilities=frozenset(
+                        {
+                            Capability.STREAMING,
+                            Capability.VISION,
+                            Capability.JSON_MODE,
+                            Capability.TOOLS,
+                        }
+                    ),
                     quality_score=0.75,
                     latency_score=0.8,
                 ),
@@ -79,7 +97,13 @@ def default_providers() -> list[ProviderMetadata]:
                     display_name="Gemini 2.0 Flash Lite",
                     max_context_tokens=1_048_576,
                     max_output_tokens=8_192,
-                    capabilities=frozenset({Capability.STREAMING, Capability.VISION, Capability.JSON_MODE}),
+                    capabilities=frozenset(
+                        {
+                            Capability.STREAMING,
+                            Capability.VISION,
+                            Capability.JSON_MODE,
+                        }
+                    ),
                     quality_score=0.65,
                     latency_score=0.85,
                 ),
@@ -191,10 +215,7 @@ def load_env(path: Path | str | None = None) -> dict[str, str]:
     If path is None, looks for .env in the current directory.
     Does NOT override existing os.environ values.
     """
-    if path is None:
-        path = Path(".env")
-    else:
-        path = Path(path)
+    path = Path(".env") if path is None else Path(path)
 
     if not path.exists():
         return {}

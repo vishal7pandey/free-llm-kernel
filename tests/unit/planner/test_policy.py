@@ -7,7 +7,6 @@ and 'what should execute' (RoutingPolicy).
 import pytest
 
 from llm_kernel.core import (
-    Capability,
     Message,
     Request,
     Role,
@@ -18,10 +17,11 @@ from llm_kernel.planner import (
     DefaultRoutingPolicy,
     FastestPolicy,
     HealthSnapshot,
+    ModelMetadata,
     Planner,
+    PlanningError,
     ProviderCatalogue,
     ProviderMetadata,
-    ModelMetadata,
     QualityPolicy,
     QuotaSnapshot,
     RoutingPolicy,
@@ -114,8 +114,12 @@ class TestQuotaSnapshot:
 
     def test_get_usage_existing(self):
         record = UsageRecord(
-            provider="groq", model="llama-3.3-70b", day="2026-01-01",
-            request_count=5, prompt_tokens=100, completion_tokens=50,
+            provider="groq",
+            model="llama-3.3-70b",
+            day="2026-01-01",
+            request_count=5,
+            prompt_tokens=100,
+            completion_tokens=50,
         )
         quota = QuotaSnapshot(usage={"groq": record})
         assert quota.get_usage("groq") is record
@@ -153,13 +157,15 @@ class TestDefaultRoutingPolicy:
         policy = DefaultRoutingPolicy()
         model_70b = sample_provider.models[0]
         model_8b = sample_provider.models[1]
-        score_70b = policy.score(sample_request, sample_provider, model_70b, 10, empty_health, empty_quota)
-        score_8b = policy.score(sample_request, sample_provider, model_8b, 10, empty_health, empty_quota)
+        score_70b = policy.score(
+            sample_request, sample_provider, model_70b, 10, empty_health, empty_quota
+        )
+        score_8b = policy.score(
+            sample_request, sample_provider, model_8b, 10, empty_health, empty_quota
+        )
         assert score_70b > score_8b
 
-    def test_user_model_match_gets_bonus(
-        self, sample_provider, empty_health, empty_quota
-    ):
+    def test_user_model_match_gets_bonus(self, sample_provider, empty_health, empty_quota):
         policy = DefaultRoutingPolicy()
         model = sample_provider.models[0]
         req_with_model = Request(
@@ -167,8 +173,12 @@ class TestDefaultRoutingPolicy:
             model="llama-3.3-70b",
         )
         req_without = Request(messages=[Message(role=Role.USER, content="Hi")])
-        score_with = policy.score(req_with_model, sample_provider, model, 10, empty_health, empty_quota)
-        score_without = policy.score(req_without, sample_provider, model, 10, empty_health, empty_quota)
+        score_with = policy.score(
+            req_with_model, sample_provider, model, 10, empty_health, empty_quota
+        )
+        score_without = policy.score(
+            req_without, sample_provider, model, 10, empty_health, empty_quota
+        )
         assert score_with > score_without + 50  # Large bonus
 
 
@@ -178,9 +188,13 @@ class TestFastestPolicy:
     ):
         policy = FastestPolicy()
         model_70b = sample_provider.models[0]  # latency_score=0.95
-        model_8b = sample_provider.models[1]   # latency_score=0.98
-        score_70b = policy.score(sample_request, sample_provider, model_70b, 10, empty_health, empty_quota)
-        score_8b = policy.score(sample_request, sample_provider, model_8b, 10, empty_health, empty_quota)
+        model_8b = sample_provider.models[1]  # latency_score=0.98
+        score_70b = policy.score(
+            sample_request, sample_provider, model_70b, 10, empty_health, empty_quota
+        )
+        score_8b = policy.score(
+            sample_request, sample_provider, model_8b, 10, empty_health, empty_quota
+        )
         assert score_8b > score_70b
 
 
@@ -193,10 +207,20 @@ class TestCheapestPolicy:
             base_url="https://api.test.com/v1",
             api_key_env="TEST_KEY",
             models=[
-                ModelMetadata(id="cheap", display_name="Cheap", max_context_tokens=4096,
-                              cost_per_1k_input=0.0, cost_per_1k_output=0.0),
-                ModelMetadata(id="expensive", display_name="Expensive", max_context_tokens=4096,
-                              cost_per_1k_input=0.01, cost_per_1k_output=0.02),
+                ModelMetadata(
+                    id="cheap",
+                    display_name="Cheap",
+                    max_context_tokens=4096,
+                    cost_per_1k_input=0.0,
+                    cost_per_1k_output=0.0,
+                ),
+                ModelMetadata(
+                    id="expensive",
+                    display_name="Expensive",
+                    max_context_tokens=4096,
+                    cost_per_1k_input=0.01,
+                    cost_per_1k_output=0.02,
+                ),
             ],
             default_model="cheap",
         )
@@ -204,17 +228,25 @@ class TestCheapestPolicy:
         cheap = provider.models[0]
         expensive = provider.models[1]
         score_cheap = policy.score(sample_request, provider, cheap, 10, empty_health, empty_quota)
-        score_expensive = policy.score(sample_request, provider, expensive, 10, empty_health, empty_quota)
+        score_expensive = policy.score(
+            sample_request, provider, expensive, 10, empty_health, empty_quota
+        )
         assert score_cheap > score_expensive
 
 
 class TestQualityPolicy:
-    def test_prefers_higher_quality(self, sample_provider, sample_request, empty_health, empty_quota):
+    def test_prefers_higher_quality(
+        self, sample_provider, sample_request, empty_health, empty_quota
+    ):
         policy = QualityPolicy()
         model_70b = sample_provider.models[0]  # quality_score=0.8
-        model_8b = sample_provider.models[1]   # quality_score=0.6
-        score_70b = policy.score(sample_request, sample_provider, model_70b, 10, empty_health, empty_quota)
-        score_8b = policy.score(sample_request, sample_provider, model_8b, 10, empty_health, empty_quota)
+        model_8b = sample_provider.models[1]  # quality_score=0.6
+        score_70b = policy.score(
+            sample_request, sample_provider, model_70b, 10, empty_health, empty_quota
+        )
+        score_8b = policy.score(
+            sample_request, sample_provider, model_8b, 10, empty_health, empty_quota
+        )
         assert score_70b > score_8b
 
 
@@ -242,7 +274,7 @@ class TestPlannerWithPolicy:
         )
         planner = Planner(world_state=ws)
         request = Request(messages=[Message(role=Role.USER, content="Hi")])
-        with pytest.raises(Exception):
+        with pytest.raises(PlanningError):
             planner.plan(request)
 
     def test_routing_policy_is_protocol(self):

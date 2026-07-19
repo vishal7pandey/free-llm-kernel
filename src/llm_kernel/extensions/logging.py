@@ -15,11 +15,9 @@ from typing import Any
 from llm_kernel.core import (
     Request,
     Response,
-    Secret,
 )
-from llm_kernel.planner import ExecutionPlan
 from llm_kernel.extensions import Extension
-
+from llm_kernel.planner import ExecutionPlan
 
 # Patterns for common API key formats
 _KEY_PATTERNS = [

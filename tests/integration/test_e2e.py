@@ -3,7 +3,6 @@
 Uses respx to mock all HTTP endpoints. Verifies the full pipeline works.
 """
 
-import pytest
 import respx
 from httpx import Response as HttpxResponse
 
@@ -12,7 +11,7 @@ class TestEndToEnd:
     @respx.mock
     def test_full_pipeline_chat(self):
         from llm_kernel import LLMClient
-        from llm_kernel.config import default_providers, build_world_state, build_adapters
+        from llm_kernel.config import build_adapters, build_world_state, default_providers
 
         all_providers = default_providers()
         providers = [p for p in all_providers if p.name in ("groq", "google")]
@@ -48,7 +47,7 @@ class TestEndToEnd:
     @respx.mock
     def test_full_pipeline_fallback(self):
         from llm_kernel import LLMClient
-        from llm_kernel.config import default_providers, build_world_state, build_adapters
+        from llm_kernel.config import build_adapters, build_world_state, default_providers
 
         all_providers = default_providers()
         providers = [p for p in all_providers if p.name in ("groq", "google")]
@@ -87,7 +86,7 @@ class TestEndToEnd:
     @respx.mock
     def test_full_pipeline_stream(self):
         from llm_kernel import LLMClient
-        from llm_kernel.config import default_providers, build_world_state, build_adapters
+        from llm_kernel.config import build_adapters, build_world_state, default_providers
 
         all_providers = default_providers()
         providers = [p for p in all_providers if p.name in ("groq", "google")]

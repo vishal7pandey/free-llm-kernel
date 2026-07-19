@@ -16,7 +16,7 @@ from llm_kernel.core import (
     Role,
     Secret,
 )
-from llm_kernel.planner import Candidate, ExecutionPlan, ProviderMetadata, ModelMetadata
+from llm_kernel.planner import Candidate, ExecutionPlan, ModelMetadata, ProviderMetadata
 from llm_kernel.runtime import AdapterConfig, OpenAICompatibleAdapter
 
 
@@ -38,7 +38,9 @@ def plan():
         adapter_type="openai",
         base_url="https://api.groq.com/openai/v1",
         api_key_env="GROQ_API_KEY",
-        models=[ModelMetadata(id="llama-3.3-70b", display_name="Llama 3.3 70B", max_context_tokens=4096)],
+        models=[
+            ModelMetadata(id="llama-3.3-70b", display_name="Llama 3.3 70B", max_context_tokens=4096)
+        ],
         default_model="llama-3.3-70b",
     )
     request = Request(messages=[Message(role=Role.USER, content="What's the weather?")])
@@ -54,23 +56,30 @@ class TestToolCallParsing:
     def test_parses_single_tool_call(self, adapter, plan):
         execution_plan, _ = plan
         respx.post("https://api.groq.com/openai/v1/chat/completions").mock(
-            return_value=HttpxResponse(200, json={
-                "choices": [{
-                    "message": {
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "call_abc123",
-                            "type": "function",
-                            "function": {
-                                "name": "get_weather",
-                                "arguments": json.dumps({"city": "San Francisco"}),
+            return_value=HttpxResponse(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_abc123",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "get_weather",
+                                            "arguments": json.dumps({"city": "San Francisco"}),
+                                        },
+                                    }
+                                ],
                             },
-                        }],
-                    },
-                    "finish_reason": "tool_calls",
-                }],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
-            })
+                            "finish_reason": "tool_calls",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+                },
+            )
         )
 
         response = adapter.execute(execution_plan, "llama-3.3-70b")
@@ -85,27 +94,38 @@ class TestToolCallParsing:
     def test_parses_multiple_tool_calls(self, adapter, plan):
         execution_plan, _ = plan
         respx.post("https://api.groq.com/openai/v1/chat/completions").mock(
-            return_value=HttpxResponse(200, json={
-                "choices": [{
-                    "message": {
-                        "content": None,
-                        "tool_calls": [
-                            {
-                                "id": "call_1",
-                                "type": "function",
-                                "function": {"name": "get_weather", "arguments": '{"city": "SF"}'},
+            return_value=HttpxResponse(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_1",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "get_weather",
+                                            "arguments": '{"city": "SF"}',
+                                        },
+                                    },
+                                    {
+                                        "id": "call_2",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "get_time",
+                                            "arguments": '{"timezone": "PST"}',
+                                        },
+                                    },
+                                ],
                             },
-                            {
-                                "id": "call_2",
-                                "type": "function",
-                                "function": {"name": "get_time", "arguments": '{"timezone": "PST"}'},
-                            },
-                        ],
-                    },
-                    "finish_reason": "tool_calls",
-                }],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
-            })
+                            "finish_reason": "tool_calls",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+                },
+            )
         )
 
         response = adapter.execute(execution_plan, "llama-3.3-70b")
@@ -117,13 +137,18 @@ class TestToolCallParsing:
     def test_no_tool_calls_when_absent(self, adapter, plan):
         execution_plan, _ = plan
         respx.post("https://api.groq.com/openai/v1/chat/completions").mock(
-            return_value=HttpxResponse(200, json={
-                "choices": [{
-                    "message": {"content": "Hello!"},
-                    "finish_reason": "stop",
-                }],
-                "usage": {"prompt_tokens": 5, "completion_tokens": 3},
-            })
+            return_value=HttpxResponse(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {"content": "Hello!"},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 3},
+                },
+            )
         )
 
         response = adapter.execute(execution_plan, "llama-3.3-70b")
@@ -134,23 +159,30 @@ class TestToolCallParsing:
     def test_invalid_tool_call_arguments_skipped(self, adapter, plan):
         execution_plan, _ = plan
         respx.post("https://api.groq.com/openai/v1/chat/completions").mock(
-            return_value=HttpxResponse(200, json={
-                "choices": [{
-                    "message": {
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "call_1",
-                            "type": "function",
-                            "function": {
-                                "name": "bad_call",
-                                "arguments": "not valid json {{{",
+            return_value=HttpxResponse(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_1",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "bad_call",
+                                            "arguments": "not valid json {{{",
+                                        },
+                                    }
+                                ],
                             },
-                        }],
-                    },
-                    "finish_reason": "tool_calls",
-                }],
-                "usage": {"prompt_tokens": 5, "completion_tokens": 3},
-            })
+                            "finish_reason": "tool_calls",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 3},
+                },
+            )
         )
 
         response = adapter.execute(execution_plan, "llama-3.3-70b")
@@ -162,20 +194,30 @@ class TestToolCallParsing:
         execution_plan, _ = plan
         # Some providers return "stop" even with tool_calls
         respx.post("https://api.groq.com/openai/v1/chat/completions").mock(
-            return_value=HttpxResponse(200, json={
-                "choices": [{
-                    "message": {
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "call_1",
-                            "type": "function",
-                            "function": {"name": "search", "arguments": '{"q": "test"}'},
-                        }],
-                    },
-                    "finish_reason": "stop",
-                }],
-                "usage": {"prompt_tokens": 5, "completion_tokens": 3},
-            })
+            return_value=HttpxResponse(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call_1",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "search",
+                                            "arguments": '{"q": "test"}',
+                                        },
+                                    }
+                                ],
+                            },
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 3},
+                },
+            )
         )
 
         response = adapter.execute(execution_plan, "llama-3.3-70b")

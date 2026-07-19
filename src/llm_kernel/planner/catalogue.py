@@ -6,8 +6,9 @@ because they describe what the Planner reasons about.
 
 from __future__ import annotations
 
-from pydantic import ConfigDict, Field, model_validator
 from typing import Self
+
+from pydantic import Field, model_validator
 
 from llm_kernel.core import Capability, KernelModel, PrivacyLevel, ValidationError
 
